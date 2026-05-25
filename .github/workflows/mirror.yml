@@ -24,7 +24,6 @@ jobs:
           git config --global user.email "huawei_network@foxmail.com"
 
       - name: Push to Gitee
-        if: secrets.GITEE_TOKEN != ''
         env:
           GITEE_TOKEN: ${{ secrets.GITEE_TOKEN }}
         run: |
@@ -37,7 +36,6 @@ jobs:
           echo "Gitee sync completed!"
 
       - name: Push to Gitcode
-        if: secrets.GITCODE_TOKEN != ''
         env:
           GITCODE_TOKEN: ${{ secrets.GITCODE_TOKEN }}
         run: |
