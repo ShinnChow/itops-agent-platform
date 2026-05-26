@@ -7,8 +7,9 @@ import db from '../models/database';
 
 const router = Router();
 
-function maskApiKey(key: string): string {
-  if (!key || key.length < 12) return key.substring(0, 4) + '****';
+function maskApiKey(key: string | undefined): string {
+  if (!key || key.length === 0) return '';
+  if (key.length < 12) return key.substring(0, 4) + '****';
   return key.substring(0, 8) + '...' + key.substring(key.length - 4);
 }
 
@@ -20,7 +21,8 @@ function validateQAnythingConfig(config: any): string | null {
     if (!config.kbId || !config.kbId.trim()) {
       return '知识库 ID 不能为空';
     }
-    if (!config.apiKey || !config.apiKey.trim()) {
+    // 本地部署模式可以不要求 API Key
+    if (config.mode === 'cloud' && (!config.apiKey || !config.apiKey.trim())) {
       return 'API Key 不能为空';
     }
   }

@@ -111,18 +111,21 @@ class QAnythingService {
       if (data && data.response) {
         // 处理字符串响应
         if (typeof data.response === 'string') {
-          context = data.response;
+          context = data.response.trim();
         }
         // 处理数组响应（chunks）
         else if (Array.isArray(data.response)) {
-          const chunks = data.response.map((chunk: any) =>
-            typeof chunk === 'string' ? chunk : (chunk.content || chunk.text || '')
-          ).filter(Boolean);
+          const chunks = data.response.map((chunk: any) => {
+            if (typeof chunk === 'string') return chunk.trim();
+            const content = chunk.content || chunk.text || '';
+            return typeof content === 'string' ? content.trim() : '';
+          }).filter(Boolean);
           context = chunks.join('\n\n');
         }
-        // 处理对象响应
+        // 处理对象响应 - 避免 JSON.stringify 输出无用内容
         else if (typeof data.response === 'object') {
-          context = data.response.content || data.response.text || JSON.stringify(data.response);
+          const textContent = data.response.content || data.response.text || '';
+          context = typeof textContent === 'string' ? textContent.trim() : '';
         }
       }
 
