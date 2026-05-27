@@ -1,11 +1,11 @@
-⚠️ **重要许可证变更通知（2026-05-27）** 
+**⚠️重要许可证变更通知（2026-05-27）** 
 
 本项目自今日起，所有新提交的代码将采用 **Mozilla Public License 2.0 (MPL-2.0)** 许可证开源。
 - 2026年5月27日 16:00 之前提交的所有代码，仍遵循原 MIT 许可证
 - 任何基于本项目 2026-05-27 之后版本的衍生作品，必须遵守 MPL-2.0 许可证
 - 如需**闭源二次开发、打包销售、SaaS化运营**等商业用途，请联系作者获取专属商业许可证
 
-📧 商业授权联系：huawei_network@foxmail.com | 微信公众号：IT Online
+📧 商业授权联系：huawei_network@foxmail.com  |  💬 微信公众号：IT Online
 👤 作者：谭策 | IT Online
 
 
@@ -13,9 +13,9 @@
 
 # ITOps Agent Platform
 
-企业级 IT 运维多 Agent 自动化平台 — 基于大语言模型的智能运维解决方案。
+企业级 IT 运维多 Agent 自动化平台 — 基于大语言模型的全开源多Agent智能运维解决方案。
 
-[项目愿景与社区共建](docs/项目愿景与社区共建.md) [项目入门学习文档](docs/book/README.md)
+📝[项目愿景与社区共建](docs/项目愿景与社区共建.md) 📝[项目入门学习文档](docs/book/README.md)
 
 [![CI](https://github.com/qinshihu/itops-agent-platform/actions/workflows/ci.yml/badge.svg)](https://github.com/qinshihu/itops-agent-platform/actions/workflows/ci.yml)
 [![Release](https://github.com/qinshihu/itops-agent-platform/actions/workflows/release.yml/badge.svg)](https://github.com/qinshihu/itops-agent-platform/actions/workflows/release.yml)

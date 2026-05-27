@@ -19,6 +19,7 @@ export function runMigrations() {
   migrateScheduledTasksLastStatus();
   migrateReportTables();
   checkProductionWebhookSecurity();
+  migrateWindowsVncColumns();
 }
 
 function migrateServerColumns() {
@@ -755,5 +756,32 @@ function checkProductionWebhookSecurity() {
       'Set WEBHOOK_VERIFY_ENABLED=true and WEBHOOK_SECRET=<strong-secret> in your environment variables. ' +
       'Without signature verification, anyone can send forged alerts to your system.'
     );
+  }
+}
+
+function migrateWindowsVncColumns() {
+  try {
+    const columns = db.prepare("PRAGMA table_info(servers)").all() as Array<{ name: string; type: string }>;
+    const existingColumns = new Set(columns.map(col => col.name));
+    
+    const newColumns = [
+      { name: 'os_type', type: 'TEXT DEFAULT \'linux\'' },
+      { name: 'vnc_port', type: 'INTEGER DEFAULT 5900' },
+      { name: 'vnc_password', type: 'TEXT' }
+    ];
+    
+    for (const col of newColumns) {
+      if (!existingColumns.has(col.name)) {
+        logger.info(`🔄 Adding column: ${col.name} to servers table`);
+        try {
+          db.prepare(`ALTER TABLE servers ADD COLUMN ${col.name} ${col.type}`).run();
+        } catch {
+          logger.info(`ℹ️ Column ${col.name} may already exist, skipping`);
+        }
+      }
+    }
+    logger.info('✅ Windows VNC columns migration complete');
+  } catch (e: unknown) {
+    logger.info('⚠️ Windows VNC migration may have already run, continuing:', e instanceof Error ? e.message : String(e));
   }
 }

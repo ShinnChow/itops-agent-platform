@@ -37,12 +37,14 @@ import remediationExecutionRoutes from './routes/remediationExecutionRoutes';
 import backupRoutes from './routes/backupRoutes';
 import databaseRoutes from './routes/databaseRoutes';
 import knowledgeQAnythingRoutes from './routes/knowledgeQAnythingRoutes';
+import vncRoutes from './routes/vncRoutes';
 import { schedulerService } from './services/schedulerService';
 import { reportService } from './services/reportService';
 import { copilotService } from './services/copilotService';
 import { rootCauseAnalysisService } from './services/rootCauseAnalysisService';
 import { notificationService } from './services/notificationService';
 import { remediationService } from './services/remediationService';
+import { vncProxyService } from './services/vncProxyService';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler';
 import { authenticateToken } from './middleware/auth';
 import { rateLimiter } from './middleware/rateLimiter';
@@ -98,6 +100,7 @@ initTokenBlacklist();
 
 setupWebSocket(io);
 setIOInstance(io);
+vncProxyService.initialize(io);
 
 // 公开路由 - 添加速率限制但不需要认证
 app.use('/api/auth', rateLimiter, authRoutes);
@@ -169,6 +172,7 @@ app.use('/api/backups', rateLimiter, backupRoutes);
 app.use('/api/database', rateLimiter, databaseRoutes);
 app.use('/api/knowledge/qanything', rateLimiter, knowledgeQAnythingRoutes);
 app.use('/api/import-export', rateLimiter, importExportRouter);
+app.use('/api/vnc', rateLimiter, vncRoutes);
 
 app.use(notFoundHandler);
 app.use(errorHandler);

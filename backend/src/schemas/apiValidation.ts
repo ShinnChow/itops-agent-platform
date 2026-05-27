@@ -23,6 +23,7 @@ export const serverSchemas = {
     private_key: z.string().optional(),
     use_ssh_key: z.coerce.number().int().min(0).max(1).default(0),
     description: z.string().max(500).optional(),
+    os_type: z.enum(['linux', 'windows', 'unknown']).default('linux'),
   }),
   updateServer: z.object({
     name: z.string().min(1).max(100).optional(),
@@ -33,6 +34,7 @@ export const serverSchemas = {
     use_ssh_key: z.coerce.number().int().min(0).max(1).optional(),
     description: z.string().max(500).optional(),
     enabled: z.coerce.number().int().min(0).max(1).optional(),
+    os_type: z.enum(['linux', 'windows', 'unknown']).optional(),
   }),
   serverId: z.object({
     id: z.string().uuid('无效的服务器ID'),

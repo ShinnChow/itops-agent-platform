@@ -25,6 +25,7 @@ import Settings from './pages/Settings';
 import AlertNoiseManagement from './pages/AlertNoiseManagement';
 import RootCauseAnalysis from './pages/RootCauseAnalysis';
 import TerminalPage from './pages/TerminalPage';
+import RemoteDesktop from './pages/RemoteDesktop';
 import BigScreenDashboard from './pages/BigScreenDashboard';
 import RemediationPolicies from './pages/RemediationPolicies';
 import RemediationPolicyEditor from './pages/RemediationPolicyEditor';
@@ -78,8 +79,10 @@ function App() {
               <Route path="alert-noise" element={<ProtectedRoute><AlertNoiseManagement /></ProtectedRoute>} />
               <Route path="root-cause-analysis" element={<ProtectedRoute><RootCauseAnalysis /></ProtectedRoute>} />
               <Route path="terminal" element={<ProtectedRoute><TerminalPage /></ProtectedRoute>} />
-              <Route path="big-screen" element={<ProtectedRoute><BigScreenDashboard /></ProtectedRoute>} />
-              <Route path="remediation-policies" element={<ProtectedRoute><RemediationPolicies /></ProtectedRoute>} />
+<Route path="remote-desktop" element={<ProtectedRoute><RemoteDesktop /></ProtectedRoute>} />
+<Route path="remote-desktop/:serverId" element={<ProtectedRoute><RemoteDesktop /></ProtectedRoute>} />
+<Route path="big-screen" element={<ProtectedRoute><BigScreenDashboard /></ProtectedRoute>} />
+<Route path="remediation-policies" element={<ProtectedRoute><RemediationPolicies /></ProtectedRoute>} />
               <Route path="remediation-policies/:id" element={<ProtectedRoute><RemediationPolicyEditor /></ProtectedRoute>} />
               <Route path="remediation-executions" element={<ProtectedRoute><RemediationExecutions /></ProtectedRoute>} />
               <Route path="remediation-dashboard" element={<ProtectedRoute><RemediationDashboard /></ProtectedRoute>} />

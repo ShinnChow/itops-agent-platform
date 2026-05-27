@@ -5,6 +5,7 @@ import { decrypt } from './encryptionService';
 import { generateCompletion } from './llmService';
 import { withRetry, isRetryableError } from '../utils/retry';
 import { logger } from '../utils/logger';
+import { getCommandTemplates, OSType } from './commandDispatcher';
 
 interface ServerInfo {
   id: string;
@@ -297,23 +298,38 @@ const sshPool = new SSHConnectionPool();
 // 导出连接池供外部使用（如监控、管理）
 export { sshPool };
 
-// 预定义的合规检查
-const complianceCheckList = [
-  { name: 'CPU Usage', command: 'top -bn1 | head -20' },
-  { name: 'Memory Usage', command: 'free -h && cat /proc/meminfo | head -20' },
-  { name: 'Disk Usage', command: 'df -h && du -sh /* 2>/dev/null | sort -rh | head -20' },
-  { name: 'Network Info', command: 'ip addr && netstat -tulpn 2>/dev/null || ss -tulpn' },
-  { name: 'User List', command: 'cat /etc/passwd | cut -d: -f1,3,6,7' },
-  { name: 'Running Services', command: 'systemctl list-units --type=service --state=running 2>/dev/null || service --status-all 2>&1 | grep "+"' },
-  { name: 'Uptime', command: 'uptime && w' },
-  { name: 'OS Info', command: 'cat /etc/os-release && uname -a' },
-  { name: 'SSH Config', command: 'cat /etc/ssh/sshd_config 2>/dev/null || echo "No SSH config found"' },
-  { name: 'Firewall Status', command: 'iptables -L -n 2>/dev/null || ufw status 2>/dev/null || echo "No firewall info"' },
-  { name: 'Last Logins', command: 'last -20' },
-  { name: 'Cron Jobs', command: 'crontab -l 2>/dev/null || echo "No cron jobs" && ls -la /etc/cron.* 2>/dev/null' },
-  { name: 'Package Updates', command: 'apt list --upgradable 2>/dev/null | head -30 || yum check-update 2>/dev/null | head -30 || echo "No package manager found"' }
-];
+// 根据操作系统类型获取合规检查列表
+function getComplianceCheckList(osType: OSType) {
+  const templates = getCommandTemplates(osType);
+  const baseList = [
+    { name: 'CPU Usage', command: templates.compliance.cpu },
+    { name: 'Memory Usage', command: templates.compliance.memory },
+    { name: 'Disk Usage', command: templates.compliance.disk },
+    { name: 'Network Info', command: templates.compliance.network },
+    { name: 'User List', command: templates.compliance.users },
+    { name: 'Running Services', command: templates.compliance.services },
+    { name: 'Uptime', command: templates.compliance.uptime },
+    { name: 'OS Info', command: templates.compliance.os_info }
+  ];
+  
+  // Windows 和 Linux 特有的检查
+  if (osType === 'windows') {
+    return baseList;
+  }
+  
+  // Linux 特有的检查
+  return [
+    ...baseList,
+    { name: 'SSH Config', command: 'cat /etc/ssh/sshd_config 2>/dev/null || echo "No SSH config found"' },
+    { name: 'Firewall Status', command: 'iptables -L -n 2>/dev/null || ufw status 2>/dev/null || echo "No firewall info"' },
+    { name: 'Last Logins', command: 'last -20' },
+    { name: 'Cron Jobs', command: 'crontab -l 2>/dev/null || echo "No cron jobs" && ls -la /etc/cron.* 2>/dev/null' },
+    { name: 'Package Updates', command: 'apt list --upgradable 2>/dev/null | head -30 || yum check-update 2>/dev/null | head -30 || echo "No package manager found"' }
+  ];
+}
 
+// 导出默认 Linux 版本以保持向后兼容
+const complianceCheckList = getComplianceCheckList('linux');
 export { complianceCheckList as complianceChecks };
 
 // 记录命令历史
@@ -519,6 +535,13 @@ export async function runComplianceCheck(
   const useAI = options.useAI !== false;
   const concurrency = options.concurrency ?? 3;
   
+  // 获取服务器的 os_type
+  const server = db.prepare('SELECT os_type FROM servers WHERE id = ?').get(serverId) as { os_type?: string };
+  const osType = (server?.os_type || 'linux') as OSType;
+  
+  // 获取对应操作系统的合规检查列表
+  const checks = getComplianceCheckList(osType);
+  
   if (options.saveResults) {
     db.prepare(`
       INSERT INTO compliance_checks 
@@ -527,7 +550,7 @@ export async function runComplianceCheck(
     `).run(checkId, serverId);
   }
   
-  const executeCheckWithAI = async (check: typeof complianceCheckList[0]): Promise<[string, CommandResult]> => {
+  const executeCheckWithAI = async (check: typeof checks[0]): Promise<[string, CommandResult]> => {
     const result = await executeCommand(serverId, check.command, {
       logHistory: false,
       executedBy: 'compliance-check'
@@ -540,8 +563,8 @@ export async function runComplianceCheck(
     return [check.name, result];
   };
   
-  for (let i = 0; i < complianceCheckList.length; i += concurrency) {
-    const batch = complianceCheckList.slice(i, i + concurrency);
+  for (let i = 0; i < checks.length; i += concurrency) {
+    const batch = checks.slice(i, i + concurrency);
     const batchResults = await Promise.all(batch.map(executeCheckWithAI));
     batchResults.forEach(([name, result]) => {
       results[name] = result;
@@ -556,6 +579,7 @@ export async function runComplianceCheck(
     `).run(JSON.stringify(results), checkId);
   }
   
+  logger.info(`Compliance check completed for server ${serverId}, OS: ${osType}`);
   return results;
 }
 

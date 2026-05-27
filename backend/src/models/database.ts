@@ -308,6 +308,7 @@ export function initializeDatabase() {
       enabled INTEGER DEFAULT 1,
       last_connected DATETIME,
       os TEXT,
+      os_type TEXT DEFAULT 'linux',
       cpu_cores INTEGER,
       memory_gb REAL,
       disk_gb REAL,
@@ -315,6 +316,8 @@ export function initializeDatabase() {
       private_ip TEXT,
       cloud_provider TEXT,
       cloud_instance_id TEXT,
+      vnc_port INTEGER DEFAULT 5900,
+      vnc_password TEXT,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );

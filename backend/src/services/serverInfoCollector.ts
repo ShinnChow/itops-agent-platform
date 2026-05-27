@@ -3,6 +3,7 @@ import db from '../models/database';
 import { sshPool } from './sshService';
 import { logger } from '../utils/logger';
 import { v4 as uuidv4 } from 'uuid';
+import { getCommandTemplates, detectOSType, OSType } from './commandDispatcher';
 
 interface ServerInfo {
   id: string;
@@ -82,66 +83,86 @@ class ServerInfoCollector {
         }
       };
 
-      const commands = {
-        os: "cat /etc/os-release 2>/dev/null | grep '^PRETTY_NAME=' | cut -d'=' -f2 | tr -d '\"'",
-        cpu_cores: "nproc 2>/dev/null || grep -c '^processor' /proc/cpuinfo 2>/dev/null || echo 0",
-        memory_gb: "free -g 2>/dev/null | awk '/^Mem:/{print $2}' || echo 0",
-        disk_gb: "df -BG 2>/dev/null | awk '/^\\//{sum+=$2}END{print int(sum)}' || echo 0",
-        ip_address: "hostname -I 2>/dev/null | awk '{print $1}' || echo ''",
-        private_ip: "hostname -I 2>/dev/null | awk '{print $1}' || echo ''"
-      };
-
-      const results: Record<string, string> = {};
-      let completed = 0;
-      const total = Object.keys(commands).length;
-
-      const checkComplete = () => {
-        completed++;
-        if (completed === total) {
-          const osClean = results.os.replace(/\\n/g, '').trim();
-          
-          const data = {
-            os: osClean || 'Unknown',
-            cpu_cores: parseInt(results.cpu_cores, 10) || 0,
-            memory_gb: parseFloat(results.memory_gb) || 0,
-            disk_gb: parseInt(results.disk_gb, 10) || 0,
-            ip_address: results.ip_address.trim(),
-            private_ip: results.private_ip.trim()
-          };
-
-          db.prepare(`
-            UPDATE servers 
-            SET os = ?, cpu_cores = ?, memory_gb = ?, disk_gb = ?, 
-                ip_address = ?, private_ip = ?, updated_at = CURRENT_TIMESTAMP
-            WHERE id = ?
-          `).run(data.os, data.cpu_cores, data.memory_gb, data.disk_gb, data.ip_address, data.private_ip, serverId);
-
-          logger.info(`Server info collected for ${server.name} (${serverId})`);
-          safeResolve({ success: true, data });
-        }
-      };
-
-      for (const [key, cmd] of Object.entries(commands)) {
-        conn!.exec(cmd, (err, stream) => {
-          if (err) {
-            results[key] = '';
-            checkComplete();
-            return;
-          }
-
-          let output = '';
+      // 先检测操作系统类型
+      conn!.exec('uname -a 2>/dev/null || powershell -Command "(Get-CimInstance Win32_OperatingSystem).Caption"', (err, stream) => {
+        let osDetectOutput = '';
+        if (err) {
+          osDetectOutput = 'linux';
+        } else {
           stream.on('data', (data: Buffer) => {
-            output += data.toString('utf-8');
+            osDetectOutput += data.toString('utf-8');
           });
-
           stream.on('close', () => {
-            results[key] = output.trim();
-            checkComplete();
-          });
+            const detectedOS = detectOSType(osDetectOutput);
+            logger.info(`Detected OS for ${server.name}: ${detectedOS}`);
 
-          stream.stderr.on('data', () => { /* ignore stderr */ });
-        });
-      }
+            // 更新服务器的 os_type 字段
+            db.prepare('UPDATE servers SET os_type = ? WHERE id = ?').run(detectedOS, serverId);
+
+            // 使用对应系统的模板命令采集信息
+            const templates = getCommandTemplates(detectedOS);
+            const commands = {
+              ...templates.info,
+              private_ip: templates.info.ip_address
+            };
+
+            const results: Record<string, string> = {};
+            let completed = 0;
+            const total = Object.keys(commands).length;
+
+            const checkComplete = () => {
+              completed++;
+              if (completed === total) {
+                const osClean = results.os.replace(/\\n/g, '').trim();
+                
+                const data = {
+                  os: osClean || 'Unknown',
+                  cpu_cores: parseInt(results.cpu_cores, 10) || 0,
+                  memory_gb: parseFloat(results.memory_gb) || 0,
+                  disk_gb: parseFloat(results.disk_gb) || 0,
+                  ip_address: results.ip_address.trim(),
+                  private_ip: results.private_ip.trim()
+                };
+
+                db.prepare(`
+                  UPDATE servers 
+                  SET os = ?, cpu_cores = ?, memory_gb = ?, disk_gb = ?, 
+                      ip_address = ?, private_ip = ?, os_type = ?, updated_at = CURRENT_TIMESTAMP
+                  WHERE id = ?
+                `).run(data.os, data.cpu_cores, data.memory_gb, data.disk_gb, data.ip_address, data.private_ip, detectedOS, serverId);
+
+                logger.info(`Server info collected for ${server.name} (${serverId}), OS: ${detectedOS}`);
+                safeResolve({ success: true, data });
+              }
+            };
+
+            for (const [key, cmd] of Object.entries(commands)) {
+              conn!.exec(cmd, (err, stream) => {
+                if (err) {
+                  results[key] = '';
+                  checkComplete();
+                  return;
+                }
+
+                let output = '';
+                stream.on('data', (data: Buffer) => {
+                  output += data.toString('utf-8');
+                });
+
+                stream.on('close', () => {
+                  results[key] = output.trim();
+                  checkComplete();
+                });
+
+                stream.stderr.on('data', () => { /* ignore stderr */ });
+              });
+            }
+          });
+          stream.stderr.on('data', () => {
+            osDetectOutput = 'linux';
+          });
+        }
+      });
       });
     });
   }
@@ -169,7 +190,7 @@ class ServerInfoCollector {
   }
 
   async collectServerMetrics(serverId: string): Promise<ServerMetricsResult> {
-    const server = db.prepare('SELECT * FROM servers WHERE id = ?').get(serverId) as ServerInfo | undefined;
+    const server = db.prepare('SELECT * FROM servers WHERE id = ?').get(serverId) as ServerInfo & { os_type?: string } | undefined;
 
     if (!server || !server.enabled) {
       return { success: false, error: 'Server not found or disabled' };
@@ -198,14 +219,10 @@ class ServerInfoCollector {
           }
         };
 
-        const commands = {
-          cpu_usage: `top -bn1 | grep "Cpu(s)" | awk '{print 100 - $8}' || cat /proc/stat | awk '/^cpu / {print ($2+$4)*100/($2+$4+$5)}'`,
-          memory: `free -m | awk '/^Mem:/{printf "%.1f %.1f %.1f", $2/1024, $3/1024, $3*100/$2}'`,
-          disk: `df -m --output=source,size,used,pcent / 2>/dev/null | tail -1 | awk '{print $2/1024, $3/1024, $4}' || df -BM / | tail -1 | awk '{print $2, $3, $5}'`,
-          network: `cat /proc/net/dev 2>/dev/null | grep -v lo: | awk 'NR>2 {rx+=$2; tx+=$10} END {printf "%.2f %.2f", rx/1024/1024, tx/1024/1024}' || echo "0 0"`,
-          load: `cat /proc/loadavg 2>/dev/null | awk '{print $1, $2, $3}' || uptime | awk -F'load average:' '{print $2}'`,
-          uptime: `cat /proc/uptime 2>/dev/null | awk '{print int($1)}' || echo "0"`
-        };
+        // 确定操作系统类型，优先使用数据库中的 os_type，否则使用默认 linux
+        const osType = (server.os_type || 'linux') as OSType;
+        const templates = getCommandTemplates(osType);
+        const commands = templates.metrics;
 
         const results: Record<string, string> = {};
         let completed = 0;
@@ -241,7 +258,7 @@ class ServerInfoCollector {
                 data.uptime_seconds
               );
 
-              logger.info(`Server metrics collected for ${server.name} (${serverId}): CPU=${data.cpu_usage?.toFixed(1)}%`);
+              logger.info(`Server metrics collected for ${server.name} (${serverId}): CPU=${data.cpu_usage?.toFixed(1)}%, OS: ${osType}`);
               safeResolve({ success: true, data });
             } catch (error) {
               logger.error(`Failed to save metrics for ${serverId}:`, error);

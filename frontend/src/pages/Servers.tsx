@@ -1,10 +1,12 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Plus, Edit, Trash2, Server, Terminal, CheckCircle2,
   AlertCircle, ShieldCheck, Wifi, History, Clock, FolderTree,
   Upload, RefreshCw, ChevronRight, ChevronDown, Cpu,
-  HardDrive, MemoryStick, Monitor, FolderPlus
+  HardDrive, MemoryStick, Monitor, FolderPlus, MonitorPlay,
+  Bot, Sparkles, X
 } from 'lucide-react';
 import clsx from 'clsx';
 import api from '../lib/api';
@@ -23,6 +25,7 @@ interface Server {
   last_connected?: string;
   created_at: string;
   os?: string;
+  os_type?: 'linux' | 'windows' | 'unknown';
   cpu_cores?: number;
   memory_gb?: number;
   disk_gb?: number;
@@ -75,6 +78,7 @@ interface ComplianceCheck {
 }
 
 export default function Servers() {
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedServer, setSelectedServer] = useState<Server | null>(null);
@@ -87,7 +91,10 @@ export default function Servers() {
     private_key: '',
     use_ssh_key: false,
     description: '',
-    tags: ''
+    tags: '',
+    os_type: 'linux' as 'linux' | 'windows',
+    vnc_port: 5900,
+    vnc_password: ''
   });
   const [command, setCommand] = useState('');
   const [commandResult, setCommandResult] = useState<CommandResult | null>(null);
@@ -101,6 +108,24 @@ export default function Servers() {
   const [isGroupModalOpen, setIsGroupModalOpen] = useState(false);
   const [isCollecting, setIsCollecting] = useState(false);
   const [isCollectingMetrics, setIsCollectingMetrics] = useState(false);
+  // AI 命令生成相关
+  const [isAiCommandModalOpen, setIsAiCommandModalOpen] = useState(false);
+  const [aiCommandServer, setAiCommandServer] = useState<Server | null>(null);
+  const [aiPrompt, setAiPrompt] = useState('');
+  const [aiGeneratedCommand, setAiGeneratedCommand] = useState('');
+  const [aiCommandExplanation, setAiCommandExplanation] = useState('');
+  const [isAiGenerating, setIsAiGenerating] = useState(false);
+  const [selectedAiAgent, setSelectedAiAgent] = useState<{ id: string; name: string } | null>(null);
+
+  // 获取 Agent 列表（用于 AI 生成命令）
+  const { data: agents } = useQuery({
+    queryKey: ['agents'],
+    queryFn: async () => {
+      const res = await api.get('/api/agents');
+      return res.data.data as Array<{ id: string; name: string; enabled: number }>;
+    },
+    enabled: true
+  });
   const [groupFormData, setGroupFormData] = useState({ name: '', description: '', parent_id: '' });
   const [editingGroup, setEditingGroup] = useState<ServerGroup | null>(null);
   const [importData, setImportData] = useState('');
@@ -310,7 +335,10 @@ export default function Servers() {
       private_key: '',
       use_ssh_key: false,
       description: '',
-      tags: ''
+      tags: '',
+      os_type: 'linux' as 'linux' | 'windows',
+      vnc_port: 5900,
+      vnc_password: ''
     });
   };
 
@@ -334,7 +362,10 @@ export default function Servers() {
       private_key: '',
       use_ssh_key: !!server.use_ssh_key,
       description: server.description || '',
-      tags: server.tags ? server.tags.join(', ') : ''
+      tags: server.tags ? server.tags.join(', ') : '',
+      os_type: (server as any).os_type || 'linux',
+      vnc_port: (server as any).vnc_port || 5900,
+      vnc_password: ''
     });
     setIsModalOpen(true);
   };
@@ -390,6 +421,96 @@ export default function Servers() {
     } finally {
       setIsCollecting(false);
     }
+  };
+
+  // AI 生成命令
+  const handleAiGenerateCommand = async () => {
+    if (!aiCommandServer || !aiPrompt.trim()) return;
+
+    // 用已经选好的 Agent
+    const enabledAgent = selectedAiAgent;
+    if (!enabledAgent) {
+      alert('没有可用的 AI Agent，请先配置并启用至少一个 Agent');
+      return;
+    }
+
+    setIsAiGenerating(true);
+    try {
+      // 收集尽可能多的服务器信息，让 Agent 生成更有针对性的命令
+      const serverInfo = {
+        os_name: aiCommandServer.os || '未知',
+        os_type: aiCommandServer.os_type || 'linux',
+        hostname: aiCommandServer.hostname || '',
+        ip_address: aiCommandServer.ip_address || '',
+        cpu_cores: aiCommandServer.cpu_cores || '',
+        memory_gb: aiCommandServer.memory_gb || '',
+        disk_gb: aiCommandServer.disk_gb || ''
+      };
+      
+      // 将服务器信息格式化传给 Agent
+      const userInput = `目标服务器信息：
+操作系统名称：${serverInfo.os_name}
+操作系统类型：${serverInfo.os_type}
+主机名/IP：${serverInfo.hostname || serverInfo.ip_address}
+${serverInfo.cpu_cores ? `CPU核心数：${serverInfo.cpu_cores}` : ''}
+${serverInfo.memory_gb ? `内存大小：${serverInfo.memory_gb}GB` : ''}
+${serverInfo.disk_gb ? `磁盘大小：${serverInfo.disk_gb}GB` : ''}
+
+用户需求：${aiPrompt}`;
+
+      const res = await api.post(`/api/agents/${enabledAgent.id}/test`, {
+        input: userInput,
+        serverIds: [aiCommandServer.id]
+      });
+
+      // 尝试解析返回的 JSON
+      let output = res.data.data.output;
+      // 提取 JSON 部分（去除可能的 markdown 代码块标记）
+      const jsonMatch = output.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        try {
+          const result = JSON.parse(jsonMatch[0]);
+          setAiGeneratedCommand(result.command);
+          setAiCommandExplanation(result.explanation);
+        } catch {
+          // JSON 解析失败，直接显示原始输出
+          setAiGeneratedCommand(output);
+          setAiCommandExplanation('AI 生成的命令，请确认后执行');
+        }
+      } else {
+        // 如果没有解析到 JSON，直接使用输出
+        setAiGeneratedCommand(output);
+        setAiCommandExplanation('AI 生成的命令，请确认后执行');
+      }
+    } catch (err: any) {
+      alert('AI 生成命令失败: ' + (err.response?.data?.error || err.message));
+    } finally {
+      setIsAiGenerating(false);
+    }
+  };
+
+  // 执行 AI 生成的命令
+  const handleExecuteAiCommand = () => {
+    if (!aiCommandServer || !aiGeneratedCommand) return;
+    setIsAiCommandModalOpen(false);
+    setActiveTab('servers');
+    setSelectedServer(aiCommandServer);
+    setCommand(aiGeneratedCommand);
+    setCommandResult(null);
+
+    // 直接执行命令，不需要 setTimeout
+    setIsExecuting(true);
+    executeCommandMutation.mutate(
+      { id: aiCommandServer.id, command: aiGeneratedCommand },
+      {
+        onSuccess: (data) => {
+          setCommandResult(data.data);
+        },
+        onSettled: () => {
+          setIsExecuting(false);
+        },
+      }
+    );
   };
 
   const handleCollectAll = async () => {
@@ -621,11 +742,41 @@ export default function Servers() {
                     <p>{selectedTag ? `没有带标签 "${selectedTag}" 的服务器` : selectedGroupId ? '该分组下暂无服务器' : '暂无服务器，请添加第一个服务器'}</p>
                   </div>
                 ) : filteredServers.map((server) => (
-                  <div key={server.id} className="bg-surface border border-border rounded-lg p-4 min-w-0">
-                    <div className="flex items-start justify-between mb-3 min-w-0">
+                  <div key={server.id} className={clsx(
+                    'relative bg-surface border rounded-lg p-4 min-w-0 overflow-hidden',
+                    server.os_type === 'linux' 
+                      ? 'border-yellow-500/30' 
+                      : server.os_type === 'windows' 
+                        ? 'border-blue-500/30' 
+                        : 'border-border'
+                  )}>
+                    {/* 操作系统左侧标识条 */}
+                    <div className={clsx(
+                      'absolute left-0 top-0 bottom-0 w-1',
+                      server.os_type === 'linux' 
+                        ? 'bg-gradient-to-b from-yellow-500 to-orange-500' 
+                        : server.os_type === 'windows' 
+                          ? 'bg-gradient-to-b from-blue-500 to-cyan-500' 
+                          : 'bg-gray-400'
+                    )} />
+                    
+                    <div className="flex items-start justify-between mb-3 min-w-0 pl-2">
                       <div className="flex items-center gap-2 min-w-0">
-                        <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
-                          <Server className="w-4 h-4 text-primary" />
+                        <div className={clsx(
+                          'w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0',
+                          server.os_type === 'linux' 
+                            ? 'bg-yellow-500/10' 
+                            : server.os_type === 'windows' 
+                              ? 'bg-blue-500/10' 
+                              : 'bg-primary/10'
+                        )}>
+                          <Server className={clsx('w-4 h-4',
+                            server.os_type === 'linux' 
+                              ? 'text-yellow-500' 
+                              : server.os_type === 'windows' 
+                                ? 'text-blue-500' 
+                                : 'text-primary'
+                          )} />
                         </div>
                         <div className="min-w-0">
                           <h3 className="font-medium text-text-primary truncate">{server.name}</h3>
@@ -633,6 +784,15 @@ export default function Servers() {
                         </div>
                       </div>
                       <div className="flex gap-1 flex-shrink-0">
+                        {server.os_type === 'windows' && (
+                          <button
+                            onClick={() => navigate(`/remote-desktop/${server.id}`)}
+                            className="p-1 hover:bg-background rounded transition-colors"
+                            title="远程桌面"
+                          >
+                            <MonitorPlay className="w-4 h-4 text-text-secondary" />
+                          </button>
+                        )}
                         <button
                           onClick={() => handleTestConnection(server)}
                           className="p-1 hover:bg-background rounded transition-colors"
@@ -750,6 +910,28 @@ export default function Servers() {
                       )}
                     </div>
                     <div className="flex gap-2">
+                      <button
+                        onClick={() => {
+                          setAiCommandServer(server);
+                          setAiPrompt('');
+                          setAiGeneratedCommand('');
+                          setAiCommandExplanation('');
+                          // 打开前先选好最合适的 Agent（优先选命令生成专家）
+                          if (agents) {
+                            const cmdAgent = agents.find(a => a.enabled === 1 && a.id === '31a630ba-f6cc-464c-8b2d-20389611fa27');
+                            const serverAgent = agents.find(a => a.enabled === 1 && (
+                              a.category?.includes('服务器') || a.name?.includes('命令') || a.name?.includes('服务')
+                            ));
+                            const firstAgent = agents.find(a => a.enabled === 1);
+                            setSelectedAiAgent(cmdAgent || serverAgent || firstAgent || null);
+                          }
+                          setIsAiCommandModalOpen(true);
+                        }}
+                        className="flex-1 flex items-center justify-center gap-1 px-3 py-2 bg-gradient-to-r from-purple-500/10 to-blue-500/10 border border-purple-500/20 rounded-lg text-sm text-purple-600 dark:text-purple-400 hover:from-purple-500/20 hover:to-blue-500/20 transition-colors"
+                      >
+                        <Sparkles className="w-4 h-4" />
+                        AI 帮我执行
+                      </button>
                       <button
                         onClick={() => {
                           setSelectedServer(server);
@@ -1054,6 +1236,33 @@ export default function Servers() {
           </div>
         </div>
 
+        {/* 使用说明 */}
+        <div className="bg-surface border border-border rounded-lg p-4">
+          <div className="flex items-start gap-4">
+            <div className="flex-1">
+              <h3 className="text-sm font-medium text-text-primary mb-2">使用说明</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 text-xs text-text-secondary">
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded bg-gradient-to-b from-yellow-500 to-orange-500 flex-shrink-0" />
+                  <span><strong>Linux 服务器</strong>：左侧黄橙渐变标识，支持 SSH 命令执行</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-3 h-3 rounded bg-gradient-to-b from-blue-500 to-cyan-500 flex-shrink-0" />
+                  <span><strong>Windows 服务器</strong>：左侧蓝青渐变标识，支持远程桌面</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <RefreshCw className="w-3 h-3 flex-shrink-0" />
+                  <span><strong>采集信息</strong>：获取服务器 OS、CPU、内存、磁盘等信息</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Terminal className="w-3 h-3 flex-shrink-0" />
+                  <span><strong>执行命令</strong>：通过 SSH 远程执行命令，查看执行历史</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* 标签页导航 */}
         <div className="flex gap-2 border-b border-border">
           <button
@@ -1258,6 +1467,17 @@ export default function Servers() {
                     />
                   </div>
                   <div>
+                    <label className="block text-sm font-medium text-text-secondary mb-2">操作系统类型</label>
+                    <select
+                      value={formData.os_type}
+                      onChange={(e) => setFormData({ ...formData, os_type: e.target.value as 'linux' | 'windows' })}
+                      className="w-full px-4 py-2 bg-background border border-border rounded-lg focus:outline-none focus:border-primary text-text-primary"
+                    >
+                      <option value="linux">Linux</option>
+                      <option value="windows">Windows</option>
+                    </select>
+                  </div>
+                  <div>
                     <label className="block text-sm font-medium text-text-secondary mb-2">用户名 *</label>
                     <input
                       type="text"
@@ -1328,6 +1548,34 @@ export default function Servers() {
                     className="w-full px-4 py-2 bg-background border border-border rounded-lg focus:outline-none focus:border-primary text-text-primary"
                   />
                 </div>
+
+                {formData.os_type === 'windows' && (
+                  <div className="pt-2 border-t border-border">
+                    <h4 className="text-sm font-medium text-text-primary mb-3">VNC 配置（远程桌面）</h4>
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <div>
+                        <label className="block text-sm font-medium text-text-secondary mb-2">VNC 端口</label>
+                        <input
+                          type="number"
+                          value={formData.vnc_port}
+                          onChange={(e) => setFormData({ ...formData, vnc_port: parseInt(e.target.value) || 5900 })}
+                          placeholder="5900"
+                          className="w-full px-4 py-2 bg-background border border-border rounded-lg focus:outline-none focus:border-primary text-text-primary"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-text-secondary mb-2">VNC 密码</label>
+                        <input
+                          type="password"
+                          value={formData.vnc_password}
+                          onChange={(e) => setFormData({ ...formData, vnc_password: e.target.value })}
+                          placeholder={selectedServer ? '留空以保持不变' : 'VNC 密码'}
+                          className="w-full px-4 py-2 bg-background border border-border rounded-lg focus:outline-none focus:border-primary text-text-primary"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 <div className="flex gap-3 pt-4">
                   <button
@@ -1481,6 +1729,195 @@ export default function Servers() {
                   </button>
                 </div>
               </form>
+            </div>
+          </div>
+        )}
+
+        {/* AI 命令生成模态框 */}
+        {isAiCommandModalOpen && aiCommandServer && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+            <div className="bg-surface rounded-xl p-6 w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center">
+                    <Bot className="w-5 h-5 text-white" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold text-text-primary">AI 智能命令生成</h3>
+                    <p className="text-xs text-text-secondary">
+                      {aiCommandServer.name} ({aiCommandServer.hostname})
+                      {selectedAiAgent && (
+                        <span className="ml-2 text-purple-500">
+                          · {selectedAiAgent.name}
+                        </span>
+                      )}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setIsAiCommandModalOpen(false)}
+                  className="p-2 hover:bg-background rounded-lg transition-colors"
+                >
+                  <X className="w-5 h-5 text-text-secondary" />
+                </button>
+              </div>
+
+              {/* 操作系统信息展示 */}
+              <div className="mb-4 p-3 bg-purple-500/5 border border-purple-500/20 rounded-lg">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-sm">
+                    <Server className="w-4 h-4 text-purple-500" />
+                    <span className="text-text-secondary">目标操作系统：</span>
+                    <span className="text-text-primary font-medium">
+                      {aiCommandServer?.os || aiCommandServer?.os_type || 'linux (默认，未采集信息)'}
+                    </span>
+                  </div>
+                  {!aiCommandServer?.os && (
+                    <span className="text-xs text-yellow-600 dark:text-yellow-400 flex items-center gap-1">
+                      <AlertCircle className="w-3 h-3" />
+                      建议先采集服务器信息，以便生成更准确的命令
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* 输入提示 */}
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-text-secondary mb-2">请描述您要执行的操作</label>
+                <div className="relative">
+                  <textarea
+                    value={aiPrompt}
+                    onChange={(e) => setAiPrompt(e.target.value)}
+                    placeholder="例如：查看磁盘使用情况 / 查看内存占用前 10 的进程 / 检查 Nginx 是否运行..."
+                    rows={3}
+                    className="w-full px-4 py-3 bg-background border border-border rounded-lg focus:outline-none focus:border-purple-500 text-text-primary resize-none"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        handleAiGenerateCommand();
+                      }
+                    }}
+                  />
+                  <button
+                    onClick={handleAiGenerateCommand}
+                    disabled={isAiGenerating || !aiPrompt.trim()}
+                    className="absolute right-3 bottom-3 px-4 py-1.5 bg-gradient-to-r from-purple-500 to-blue-500 text-white rounded-lg text-sm hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                  >
+                    {isAiGenerating ? (
+                      <>
+                        <RefreshCw className="w-4 h-4 animate-spin" />
+                        生成中...
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="w-4 h-4" />
+                        生成命令
+                      </>
+                    )}
+                  </button>
+                </div>
+                {/* 快捷提示 - 根据操作系统类型显示不同选项 */}
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {(aiCommandServer?.os_type === 'windows' ? [
+                    '查看磁盘使用情况',
+                    '检查内存占用前10的进程',
+                    '查看端口监听情况',
+                    '检查IIS服务状态',
+                    '查看系统负载情况',
+                    '查看系统事件日志',
+                    '查看当前登录用户',
+                    '清理临时文件',
+                    '检查Windows服务状态'
+                  ] : [
+                    '查看磁盘使用率',
+                    '检查内存占用前10的进程',
+                    '查看端口监听情况',
+                    '检查Nginx服务状态',
+                    '查看系统负载情况',
+                    '查看系统日志最后20行',
+                    '查看当前登录用户',
+                    '清理临时文件',
+                    '检查Docker容器状态'
+                  ]).map((tip) => (
+                    <button
+                      key={tip}
+                      onClick={() => setAiPrompt(tip)}
+                      className="px-3 py-1 bg-purple-500/10 text-purple-600 dark:text-purple-400 rounded-full text-xs hover:bg-purple-500/20 transition-colors"
+                    >
+                      {tip}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* 生成的命令 */}
+              {aiGeneratedCommand && (
+                <div className="mb-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="block text-sm font-medium text-text-secondary">AI 生成的命令</label>
+                    <button
+                      onClick={() => navigator.clipboard.writeText(aiGeneratedCommand)}
+                      className="text-xs text-purple-500 hover:text-purple-400"
+                    >
+                      复制命令
+                    </button>
+                  </div>
+                  <div className="bg-black/90 rounded-lg p-4">
+                    <code className="text-green-400 font-mono text-sm break-all whitespace-pre-wrap">
+                      {aiGeneratedCommand}
+                    </code>
+                  </div>
+                  {aiCommandExplanation && (
+                    <div className="mt-3 p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-lg">
+                      <p className="text-sm text-yellow-700 dark:text-yellow-400">
+                        <strong>💡 说明：</strong>{aiCommandExplanation}
+                      </p>
+                    </div>
+                  )}
+                  <div className="mt-3 p-3 bg-red-500/10 border border-red-500/20 rounded-lg">
+                    <p className="text-sm text-red-700 dark:text-red-400">
+                      <strong>⚠️ 警告：</strong>请仔细确认命令的安全性和正确性，再执行！错误的命令可能导致数据丢失或系统故障。
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* 按钮组 */}
+              <div className="flex gap-3 pt-2">
+                <button
+                  onClick={() => {
+                    setIsAiCommandModalOpen(false);
+                    setAiGeneratedCommand('');
+                    setAiCommandExplanation('');
+                  }}
+                  className="flex-1 px-4 py-2 bg-surface border border-border text-text-primary rounded-lg hover:bg-background transition-colors"
+                >
+                  取消
+                </button>
+                {aiGeneratedCommand && (
+                  <>
+                    <button
+                      onClick={() => {
+                        setAiGeneratedCommand('');
+                        setAiCommandExplanation('');
+                        handleAiGenerateCommand();
+                      }}
+                      disabled={isAiGenerating}
+                      className="flex-1 px-4 py-2 bg-surface border border-purple-500/30 text-purple-600 dark:text-purple-400 rounded-lg hover:bg-purple-500/10 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                    >
+                      <RefreshCw className={clsx('w-4 h-4', isAiGenerating && 'animate-spin')} />
+                      重新生成
+                    </button>
+                    <button
+                      onClick={handleExecuteAiCommand}
+                      className="flex-1 px-4 py-2 bg-gradient-to-r from-purple-500 to-blue-500 text-white rounded-lg hover:opacity-90 transition-opacity flex items-center justify-center gap-2"
+                    >
+                      <Terminal className="w-4 h-4" />
+                      确认并执行
+                    </button>
+                  </>
+                )}
+              </div>
             </div>
           </div>
         )}
