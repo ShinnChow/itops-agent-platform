@@ -1,3 +1,7 @@
+[English](README.en.md) | [中文](README.md)
+
+---
+
 **重要许可证⚠️变更通知（2026-05-27）** 
 
 本项目自今日起，所有新提交的代码将采用 **Mozilla Public License 2.0 (MPL-2.0)** 许可证开源。
