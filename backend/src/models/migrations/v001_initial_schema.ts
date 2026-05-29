@@ -784,6 +784,18 @@ const v001InitialSchema: Migration = {
     `);
 
     logger.info('✅ Initial database schema created successfully');
+    
+    // Ensure critical columns exist on agents table (for databases created before full schema was available)
+    try {
+      db.exec('ALTER TABLE agents ADD COLUMN category TEXT');
+    } catch {
+      // Column already exists or table doesn't exist, safe to ignore
+    }
+    try {
+      db.exec('ALTER TABLE agents ADD COLUMN api_provider TEXT');
+    } catch {
+      // Column already exists or table doesn't exist, safe to ignore
+    }
   },
 
   down: async (db: any) => {

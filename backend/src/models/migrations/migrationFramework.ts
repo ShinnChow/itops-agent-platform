@@ -145,6 +145,9 @@ export class MigrationManager {
           this.db.exec('ROLLBACK');
           logger.error(`❌ Migration v${migration.version} failed, rolling back`, migrationError as Error);
 
+          // Remove any previous failed record for this version to allow retry
+          this.db.prepare('DELETE FROM schema_migrations WHERE version = ?').run(migration.version);
+          
           this.db.prepare(`
             INSERT INTO schema_migrations (id, version, name, success, error_message)
             VALUES (?, ?, ?, 0, ?)
@@ -160,6 +163,14 @@ export class MigrationManager {
         }
       } catch (outerError) {
         logger.error(`❌ Unexpected error during migration v${migration.version}`, outerError as Error);
+        
+        // Remove any previous failed record for this version to allow retry
+        try {
+          this.db.prepare('DELETE FROM schema_migrations WHERE version = ?').run(migration.version);
+        } catch {
+          // Ignore if table doesn't exist
+        }
+        
         return {
           success: false,
           executedMigrations: executedCount,
