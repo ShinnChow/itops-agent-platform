@@ -10,6 +10,31 @@ const v001InitialSchema: Migration = {
   up: async (db: any) => {
     logger.info('🔄 Creating initial database schema...');
 
+    // If tables already exist but lack expected columns (from a previous failed migration),
+    // drop them so we can recreate with the correct schema
+    const tableColumnChecks: Array<{ table: string; requiredColumns: string[] }> = [
+      { table: 'agents', requiredColumns: ['category'] },
+      { table: 'scripts', requiredColumns: ['category'] },
+      { table: 'knowledge_base', requiredColumns: ['category'] },
+    ];
+
+    for (const { table, requiredColumns } of tableColumnChecks) {
+      try {
+        const tableExists = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name=?").get(table);
+        if (tableExists) {
+          const columns = db.prepare(`PRAGMA table_info(${table})`).all();
+          const columnNames = new Set(columns.map((col: any) => col.name));
+          const missingColumns = requiredColumns.filter(c => !columnNames.has(c));
+          if (missingColumns.length > 0) {
+            logger.warn(`⚠️ Dropping incomplete ${table} table from previous failed migration (missing: ${missingColumns.join(', ')})`);
+            db.exec(`DROP TABLE IF EXISTS ${table}`);
+          }
+        }
+      } catch {
+        // Safe to ignore
+      }
+    }
+
     db.exec(`
       -- Token Blacklist
       CREATE TABLE IF NOT EXISTS token_blacklist (
@@ -784,18 +809,6 @@ const v001InitialSchema: Migration = {
     `);
 
     logger.info('✅ Initial database schema created successfully');
-    
-    // Ensure critical columns exist on agents table (for databases created before full schema was available)
-    try {
-      db.exec('ALTER TABLE agents ADD COLUMN category TEXT');
-    } catch {
-      // Column already exists or table doesn't exist, safe to ignore
-    }
-    try {
-      db.exec('ALTER TABLE agents ADD COLUMN api_provider TEXT');
-    } catch {
-      // Column already exists or table doesn't exist, safe to ignore
-    }
   },
 
   down: async (db: any) => {

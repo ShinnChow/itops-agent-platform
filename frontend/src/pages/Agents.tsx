@@ -853,8 +853,8 @@ function AgentModal({ agent, onClose }: { agent: Agent | null; onClose: () => vo
       
       setTestResult(res.data.data.result || '测试完成，无返回结果');
     } catch (error: unknown) {
-      const err = error as { response?: { data?: { message?: string } }; message?: string };
-      setTestResult(`测试失败: ${err.response?.data?.message || err.message}`);
+      const err = error as { response?: { data?: { error?: string; message?: string } }; message?: string };
+      setTestResult(`测试失败: ${err.response?.data?.error || err.response?.data?.message || err.message}`);
     } finally {
       setTestLoading(false);
     }

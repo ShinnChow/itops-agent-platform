@@ -28,7 +28,7 @@ export default function ForcePasswordChange() {
       navigate('/dashboard', { replace: true });
     },
     onError: (err: any) => {
-      setPasswordError(err.response?.data?.message || '密码修改失败');
+      setPasswordError(err.response?.data?.error || err.response?.data?.message || '密码修改失败');
     }
   });
 

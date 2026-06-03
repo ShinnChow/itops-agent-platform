@@ -3,6 +3,7 @@ import { networkDeviceService } from '../services/networkDeviceService';
 import { networkInspectionService } from '../services/networkInspectionService';
 import { networkCommandGenerator } from '../services/networkCommandGenerator';
 import { logger } from '../utils/logger';
+import { requireRole } from '../middleware/auth';
 
 const router = Router();
 
@@ -32,7 +33,7 @@ router.get('/:id', (req: Request, res: Response) => {
 });
 
 // Create device
-router.post('/', (req: Request, res: Response) => {
+router.post('/', requireRole('admin'), (req: Request, res: Response) => {
   try {
     const { name, ip_address, vendor, model, os_version, ssh_port, username, password, enable_password, location, role } = req.body;
 
@@ -69,7 +70,7 @@ router.post('/', (req: Request, res: Response) => {
 });
 
 // Update device
-router.put('/:id', (req: Request, res: Response) => {
+router.put('/:id', requireRole('admin'), (req: Request, res: Response) => {
   try {
     const device = networkDeviceService.updateDevice(req.params.id, req.body);
     if (!device) {
@@ -83,7 +84,7 @@ router.put('/:id', (req: Request, res: Response) => {
 });
 
 // Delete device
-router.delete('/:id', (req: Request, res: Response) => {
+router.delete('/:id', requireRole('admin'), (req: Request, res: Response) => {
   try {
     const deleted = networkDeviceService.deleteDevice(req.params.id);
     if (!deleted) {
@@ -97,7 +98,7 @@ router.delete('/:id', (req: Request, res: Response) => {
 });
 
 // Test temporary connection (for add device form) - MUST be before /:id routes
-router.post('/test-connection', async (req: Request, res: Response) => {
+router.post('/test-connection', requireRole('admin'), async (req: Request, res: Response) => {
   try {
     const { ip_address, ssh_port, username, password } = req.body;
     
@@ -119,7 +120,7 @@ router.post('/test-connection', async (req: Request, res: Response) => {
 });
 
 // Test device connection
-router.post('/:id/test-connection', async (req: Request, res: Response) => {
+router.post('/:id/test-connection', requireRole('admin'), async (req: Request, res: Response) => {
   try {
     const result = await networkDeviceService.testConnection(req.params.id);
     res.json({ success: result.success, data: result });
@@ -130,7 +131,7 @@ router.post('/:id/test-connection', async (req: Request, res: Response) => {
 });
 
 // Execute standard inspection
-router.post('/:id/inspect', async (req: Request, res: Response) => {
+router.post('/:id/inspect', requireRole('admin'), async (req: Request, res: Response) => {
   try {
     const { inspectionType = 'standard', customTypes, customDescription } = req.body;
     const result = await networkInspectionService.inspectDevice(
@@ -151,7 +152,7 @@ router.post('/:id/inspect', async (req: Request, res: Response) => {
 });
 
 // Batch inspection
-router.post('/batch-inspect', async (req: Request, res: Response) => {
+router.post('/batch-inspect', requireRole('admin'), async (req: Request, res: Response) => {
   try {
     const { deviceIds, inspectionType = 'standard', customTypes, customDescription } = req.body;
     
@@ -194,7 +195,7 @@ router.get('/history/:inspectionId', (req: Request, res: Response) => {
 });
 
 // Generate custom commands using RAG + AI
-router.post('/:id/generate-commands', async (req: Request, res: Response) => {
+router.post('/:id/generate-commands', requireRole('admin'), async (req: Request, res: Response) => {
   try {
     const device = networkDeviceService.getDeviceById(req.params.id);
     if (!device) {

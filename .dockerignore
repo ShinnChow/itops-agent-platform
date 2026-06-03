@@ -45,10 +45,10 @@ Thumbs.db
 desktop.ini
 
 # Database files (use Docker volumes for persistence)
-*.db
-*.sqlite
-*.sqlite3
-data/
+**/*.db
+**/*.sqlite
+**/*.sqlite3
+**/data/
 
 # Temporary and cache files
 *.tmp

@@ -216,6 +216,7 @@ class SSHConnectionPool {
   private async createConnection(server: ServerInfo, serverId: string): Promise<Client> {
     let decryptedPassword: string | undefined;
     let decryptedPrivateKey: string | undefined;
+    let decryptedPassphrase: string | undefined;
 
     try {
       decryptedPassword = server.password ? decrypt(server.password) : undefined;
@@ -223,14 +224,30 @@ class SSHConnectionPool {
       throw new Error(`Failed to decrypt password for server ${serverId}: ${(error as Error).message}`);
     }
 
-    // 优先使用 ssh_key_id 从密钥表获取私钥
+    // 优先使用 ssh_key_id 从密钥表获取认证凭证
     if (server.ssh_key_id) {
-      const sshKey = db.prepare('SELECT private_key FROM ssh_keys WHERE id = ?').get(server.ssh_key_id) as { private_key: string } | undefined;
+      const sshKey = db.prepare('SELECT auth_type, private_key, passphrase, username, password FROM ssh_keys WHERE id = ?').get(server.ssh_key_id) as { auth_type: string; private_key: string; passphrase?: string; username?: string; password?: string } | undefined;
       if (sshKey) {
         try {
-          decryptedPrivateKey = decrypt(sshKey.private_key);
+          if (sshKey.auth_type === 'password') {
+            // 密码类型：使用凭证表中的用户名和密码
+            if (sshKey.password) {
+              decryptedPassword = decrypt(sshKey.password);
+            }
+            if (sshKey.username) {
+              // 更新服务器连接用户名为凭证中的用户名
+              server.username = sshKey.username;
+            }
+          } else {
+            // SSH 密钥类型
+            decryptedPrivateKey = decrypt(sshKey.private_key);
+            // 如果私钥有 passphrase，解密后传入 ssh2
+            if (sshKey.passphrase) {
+              decryptedPassphrase = decrypt(sshKey.passphrase);
+            }
+          }
         } catch (error) {
-          throw new Error(`Failed to decrypt SSH key for server ${serverId}: ${(error as Error).message}`);
+          throw new Error(`Failed to decrypt SSH credential for server ${serverId}: ${(error as Error).message}`);
         }
       }
     }
@@ -293,6 +310,10 @@ class SSHConnectionPool {
 
       if (server.use_ssh_key && decryptedPrivateKey) {
         connectConfig.privateKey = decryptedPrivateKey;
+        // 加密的私钥需要 passphrase 解密
+        if (decryptedPassphrase) {
+          connectConfig.passphrase = decryptedPassphrase;
+        }
       } else if (decryptedPassword) {
         connectConfig.password = decryptedPassword;
       } else {

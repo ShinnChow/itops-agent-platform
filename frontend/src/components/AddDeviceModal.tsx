@@ -71,11 +71,22 @@ export default function AddDeviceModal({ device, onClose, onSuccess }: AddDevice
 
     setIsSubmitting(true);
     try {
+      // 编辑模式下，如果密码为空，则不提交 password 和 enable_password 字段，避免覆盖原有密码
+      const payload: Record<string, unknown> = { ...formData };
+      if (isEditing) {
+        if (!formData.password) {
+          delete payload.password;
+        }
+        if (!formData.enable_password) {
+          delete payload.enable_password;
+        }
+      }
+
       if (isEditing && device?.id) {
-        await api.put(`/network-devices/${device.id}`, formData);
+        await api.put(`/network-devices/${device.id}`, payload);
         toast.success('设备更新成功');
       } else {
-        await api.post('/network-devices', formData);
+        await api.post('/network-devices', payload);
         toast.success('设备添加成功');
       }
       onSuccess();
@@ -104,7 +115,7 @@ export default function AddDeviceModal({ device, onClose, onSuccess }: AddDevice
       
       setTestResult({
         success: response.data.success,
-        message: response.data.message
+        message: response.data.error || response.data.message
       });
     } catch (error: any) {
       setTestResult({

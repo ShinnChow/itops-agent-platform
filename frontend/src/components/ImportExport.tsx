@@ -99,7 +99,7 @@ export function ImportExport({ resourceType, onImportSuccess }: ImportExportProp
       if (error.response?.data?.data) {
         setImportResult(error.response.data.data);
       } else {
-        toast.error('导入失败: ' + (error.response?.data?.message || '未知错误'));
+        toast.error('导入失败: ' + (error.response?.data?.error || error.response?.data?.message || '未知错误'));
       }
     } finally {
       setImporting(false);

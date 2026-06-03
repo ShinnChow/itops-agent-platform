@@ -35,7 +35,7 @@ export default function Settings() {
       queryClient.invalidateQueries({ queryKey: ['backupHistory'] });
     },
     onError: (err: any) => {
-      alert(err.response?.data?.message || '备份创建失败');
+      alert(err.response?.data?.error || err.response?.data?.message || '备份创建失败');
     }
   });
 
@@ -59,7 +59,7 @@ export default function Settings() {
       alert('备份恢复成功！系统将自动重启...');
     },
     onError: (err: any) => {
-      alert(err.response?.data?.message || '备份恢复失败');
+      alert(err.response?.data?.error || err.response?.data?.message || '备份恢复失败');
     }
   });
 
@@ -74,7 +74,7 @@ export default function Settings() {
       queryClient.invalidateQueries({ queryKey: ['backupHistory'] });
     },
     onError: (err: any) => {
-      alert(err.response?.data?.message || '备份删除失败');
+      alert(err.response?.data?.error || err.response?.data?.message || '备份删除失败');
     }
   });
 
@@ -93,7 +93,7 @@ export default function Settings() {
       queryClient.invalidateQueries({ queryKey: ['backupHistory'] });
     },
     onError: (err: any) => {
-      alert(err.response?.data?.message || '备份上传失败');
+      alert(err.response?.data?.error || err.response?.data?.message || '备份上传失败');
     }
   });
   
@@ -184,7 +184,7 @@ export default function Settings() {
     },
     onError: (err: any) => {
       setQanythingTestStatus('error');
-      setQanythingTestMessage(err.response?.data?.message || '连接失败');
+      setQanythingTestMessage(err.response?.data?.error || err.response?.data?.message || '连接失败');
     },
   });
 
@@ -372,12 +372,12 @@ export default function Settings() {
         
         setTimeout(() => setPasswordStatus('idle'), 3000);
       } else {
-        setPasswordError(response.data.message || '密码修改失败');
+        setPasswordError(response.data.error || response.data.message || '密码修改失败');
         setPasswordStatus('error');
         setTimeout(() => setPasswordStatus('idle'), 3000);
       }
     } catch (err: any) {
-      setPasswordError(err.response?.data?.message || '密码修改失败');
+      setPasswordError(err.response?.data?.error || err.response?.data?.message || '密码修改失败');
       setPasswordStatus('error');
       setTimeout(() => setPasswordStatus('idle'), 3000);
     }

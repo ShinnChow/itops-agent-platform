@@ -71,7 +71,7 @@ export default function SSHKeys() {
       toast.success('SSH 密钥已添加');
     },
     onError: (error: any) => {
-      const message = error?.response?.data?.message || error?.message || '添加失败，请重试';
+      const message = error?.response?.data?.error || error?.message || '添加失败，请重试';
       toast.error(message);
     },
   });
@@ -89,7 +89,7 @@ export default function SSHKeys() {
       toast.success('SSH 密钥已更新');
     },
     onError: (error: any) => {
-      const message = error?.response?.data?.message || error?.message || '更新失败，请重试';
+      const message = error?.response?.data?.error || error?.message || '更新失败，请重试';
       toast.error(message);
     },
   });

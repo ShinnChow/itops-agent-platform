@@ -30,10 +30,10 @@ export default function Login() {
           navigate('/dashboard');
         }
       } else {
-        setError(response.data.message || '登录失败，请检查用户名和密码');
+        setError(response.data.error || response.data.message || '登录失败，请检查用户名和密码');
       }
     } catch (err: any) {
-      setError(err.response?.data?.message || '网络错误，请稍后重试');
+      setError(err.response?.data?.error || err.response?.data?.message || '网络错误，请稍后重试');
     } finally {
       setLoading(false);
     }
