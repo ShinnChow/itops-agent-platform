@@ -8,8 +8,7 @@
 - 2026年5月27日 16:00 之前提交的所有代码，仍遵循原 MIT 许可证
 - 任何基于本项目 2026-05-27 之后版本的衍生作品，必须遵守 MPL-2.0 许可证
 - 本项目不允许**闭源二次开发、打包销售、SaaS化运营**等商业用途，并承诺永久开源！
-👤 作者：谭策 | IT Online
-
+- 👤 作者：谭策 | IT Online
 
 
 
@@ -29,6 +28,8 @@
 <img alt="0cpuy-fbfi3" src="docs-assets/0-3.gif" style="max-width: 100%; height: auto;" />
 
 <img alt="0cpuy-fbfi3" src="docs-assets/screenshot-2026-05-25-143839.png" style="max-width: 100%; height: auto;" />
+
+<img alt="0cpuy-fbfi3" src="docs-assets/images/q (18).png" style="max-width: 100%; height: auto;" />
 
 ## 项目简介
 
@@ -216,7 +217,7 @@ npm run dev
 
 系统概览，展示服务器、告警、任务等核心指标。
 
-<img alt="屏幕截图 2026-05-18 144450" src="docs-assets/0-4.png" style="max-width: 100%; height: auto;" />
+<img alt="屏幕截图 2026-05-18 144450" src="docs-assets/images/q (1).png" style="max-width: 100%; height: auto;" />
 
 ### Web SSH 终端
 
@@ -227,6 +228,7 @@ npm run dev
 - 终端会话管理（30 分钟 TTL 自动清理）
 
 <img alt="image" src="docs-assets/fdsfz.png" style="max-width: 100%; height: auto;" />
+<img alt="image" src="docs-assets/images/w (2).png" style="max-width: 100%; height: auto;" />
 
 ### 主机管理
 
@@ -272,7 +274,7 @@ npm run dev
 - 支持暂停/继续/取消
 - 自动生成 Markdown 执行报告
 
-<img alt="image" src="docs-assets/yyy.png" style="max-width: 100%; height: auto;" />
+<img alt="image" src="docs-assets/images/q (2).png" style="max-width: 100%; height: auto;" />
 
 ### 告警中心
 
@@ -281,11 +283,18 @@ npm run dev
 - 告警→工作流自动映射触发
 - 状态管理：新建/已确认/已解决
 
+<img alt="image" src="docs-assets/images/q (8).png" style="max-width: 100%; height: auto;" />
+
+
 ### 通知系统
 
 - 支持 Webhook、邮件、企业微信、钉钉通知
 - 通知配置管理
 - 系统通知自动推送
+
+<img alt="image" src="docs-assets/images/q (17).png" style="max-width: 100%; height: auto;" />
+
+
 
 ### 数据导入导出
 
@@ -304,6 +313,8 @@ npm run dev
 - 备份历史管理和清理策略
 - 支持定时自动备份
 
+<img alt="image" src="docs-assets/images/q (8).png" style="max-width: 100%; height: auto;" />
+
 ### 知识库
 
 - 22 条预设知识条目
@@ -311,7 +322,7 @@ npm run dev
 - 自动注入 LLM 对话上下文
 - 批量导入/导出
 
-<img alt="image" src="docs-assets/ttt.png" style="max-width: 100%; height: auto;" />
+<img alt="image" src="docs-assets/images/q (11).png" style="max-width: 100%; height: auto;" />
 
 ### AI Copilot
 
@@ -319,7 +330,7 @@ npm run dev
 - 自动感知系统告警、服务器、任务状态
 - 基于规则的快速响应 + LLM 深度分析
 
-<img alt="image" src="docs-assets/iii.png" style="max-width: 100%; height: auto;" />
+<img alt="image" src="docs-assets/images/q (13).png" style="max-width: 100%; height: auto;" />
 
 ### 定时任务
 
