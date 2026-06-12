@@ -12,6 +12,7 @@ import v012TimezoneMigration from './v012_timezone_migration';
 import v013NetworkDiscovery from './v013_network_discovery';
 import v014AlertCorrelation from './v014_alert_correlation';
 import v015NotificationColumns from './v015_notification_columns';
+import v016DatabasesTable from './v016_databases_table';
 
 // v009 / v010 导出的不是 Migration 对象，手动包装
 const v009NetworkCompleteCoverage: Migration = {
@@ -46,6 +47,7 @@ export const ALL_MIGRATIONS: Migration[] = [
   v013NetworkDiscovery,
   v014AlertCorrelation,
   v015NotificationColumns,
+  v016DatabasesTable,
 ];
 
 export function createMigrationManager(db: any): MigrationManager {

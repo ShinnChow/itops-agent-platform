@@ -37,6 +37,7 @@ import remediationExecutionRoutes from './routes/remediationExecutionRoutes';
 import remediationAuditRoutes from './routes/remediationAuditRoutes';
 import backupRoutes from './routes/backupRoutes';
 import databaseRoutes from './routes/databaseRoutes';
+import dbConnectionsRoutes from './routes/dbConnectionsRoutes';
 import knowledgeQAnythingRoutes from './routes/knowledgeQAnythingRoutes';
 import vncRoutes from './routes/vncRoutes';
 import networkDeviceRoutes from './routes/networkDeviceRoutes';
@@ -69,6 +70,7 @@ import { snmpPollingService } from './services/snmpPollingService';
 import { alertAutoAnalyzer } from './services/alertAutoAnalyzer';
 import { alertCorrelationService } from './services/alertCorrelationService';
 import { setServerInstances } from './services/restartService';
+import { ensureDbskiterInstalled } from './services/dbskiterService';
 import { queueService } from './services/queueService';
 import importExportRouter from './routes/importExportRoutes';
 import alertAutoRouter from './routes/alertAutoRoutes';
@@ -105,6 +107,10 @@ app.use(bodyParser.urlencoded({ extended: true, limit: '50mb' }));
 import { initAlertService } from './services/alertService';
 
 async function initializeApp() {
+  // 自动检测并安装 dbskiter（数据库运维 Agent 依赖）
+  // 不阻塞启动：如果安装失败只是打日志，后台运行
+  ensureDbskiterInstalled().catch(() => { /* 错误已在函数内部记录 */ });
+
   await initializeDatabase();
   
   // 初始化各个服务
@@ -243,6 +249,7 @@ app.use('/api/remediation-executions', rateLimiter, remediationExecutionRoutes);
 app.use('/api/remediation-audits', rateLimiter, remediationAuditRoutes);
 app.use('/api/backups', rateLimiter, backupRoutes);
 app.use('/api/database', rateLimiter, databaseRoutes);
+app.use('/api/db-connections', rateLimiter, dbConnectionsRoutes);
 app.use('/api/knowledge/qanything', rateLimiter, knowledgeQAnythingRoutes);
 app.use('/api/import-export', rateLimiter, importExportRouter);
 app.use('/api/vnc', rateLimiter, vncRoutes);

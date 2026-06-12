@@ -48,6 +48,7 @@ import {
   Cog,
   FlaskConical,
   Radio,
+  Database,
 } from 'lucide-react';
 import clsx from 'clsx';
 import { useAuth } from '../../contexts/AuthContext';
@@ -71,6 +72,7 @@ const navigationGroups = [
       { name: '网络设备', href: '/network-devices', icon: Network },
       { name: 'SNMP 管理', href: '/snmp', icon: Radio },
       { name: '网络设备发现', href: '/network-discovery', icon: Globe },
+      { name: '数据库管理', href: '/db-connections', icon: Database },
       { name: '认证凭证', href: '/ssh-keys', icon: Key },
       { name: 'Web 终端', href: '/terminal', icon: Terminal },
       { name: '远程桌面', href: '/remote-desktop', icon: MonitorPlay },

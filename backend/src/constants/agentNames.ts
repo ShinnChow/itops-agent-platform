@@ -12,6 +12,7 @@ export const AGENT_NAMES = {
   LOG_ANALYSIS: '日志分析',
   CHANGE_EXECUTION: '变更执行',
   DOC_GENERATION: '文档生成',
+  DATABASE_ADMIN: '数据库运维',
 } as const;
 
 export type AgentName = (typeof AGENT_NAMES)[keyof typeof AGENT_NAMES];

@@ -45,6 +45,7 @@ const RemediationWorkbench = lazy(() => import('./pages/RemediationWorkbench'));
 const AIInsights = lazy(() => import('./pages/AIInsights'));
 const NetworkDevices = lazy(() => import('./pages/NetworkDevices'));
 const SSHKeys = lazy(() => import('./pages/SSHKeys'));
+const DbConnections = lazy(() => import('./pages/DbConnections'));
 const AIModels = lazy(() => import('./pages/AIModels'));
 const SNMPPage = lazy(() => import('./pages/SNMP'));
 const NetworkDiscoveryPage = lazy(() => import('./pages/NetworkDiscovery'));
@@ -93,6 +94,7 @@ function App() {
                     <Route path="dashboard" element={<SuspenseRoute><ProtectedRoute><Dashboard /></ProtectedRoute></SuspenseRoute>} />
                     <Route path="servers" element={<SuspenseRoute><ProtectedRoute><Servers /></ProtectedRoute></SuspenseRoute>} />
                     <Route path="ssh-keys" element={<SuspenseRoute><ProtectedRoute><SSHKeys /></ProtectedRoute></SuspenseRoute>} />
+                    <Route path="db-connections" element={<SuspenseRoute><ProtectedRoute><DbConnections /></ProtectedRoute></SuspenseRoute>} />
                     <Route path="network-devices" element={<SuspenseRoute><ProtectedRoute><NetworkDevices /></ProtectedRoute></SuspenseRoute>} />
                     <Route path="agents" element={<SuspenseRoute><ProtectedRoute><Agents /></ProtectedRoute></SuspenseRoute>} />
                     <Route path="workflows" element={<SuspenseRoute><ProtectedRoute><Workflows /></ProtectedRoute></SuspenseRoute>} />
