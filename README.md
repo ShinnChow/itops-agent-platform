@@ -42,7 +42,7 @@ graph TB
     Nginx --> Express["Express 后端<br/>31个路由 | 20+个服务 | JWT认证"]
     React <-->|"WebSocket 实时通信"| Express
     Express --> SQLite[("SQLite 数据库<br/>39张表 | AES-256加密")]
-    Express --> LLM["🤖 LLM API<br/>豆包 | OpenAI"]
+    Express --> LLM["🤖 LLM 模型池<br/>豆包 | DeepSeek | 通义千问<br/>OpenAI | 智谱 | 本地模型"]
     Express --> SSH["🖥️ SSH 远程服务器"]
     Express --> Webhook["🚨 告警 Webhook<br/>Prometheus | Zabbix"]
     Express --> Notify["📬 通知渠道<br/>邮件 | 企业微信 | 钉钉"]
@@ -97,13 +97,36 @@ graph TB
 
 ## 支持的 AI 模型
 
-| 类型 | 提供商/框架 | 支持情况 | 推荐场景 |
-|------|------------|---------|---------|
-| **国内云 API** | 火山引擎 · 豆包 (Doubao) | ✅ 完全支持 | 国内用户推荐，稳定快速 |
-| **国际云 API** | OpenAI (GPT-4o 等) | ✅ 完全支持 | 有外网环境用户 |
-| **本地部署** | Ollama / LM Studio / vLLM | ✅ 完全支持 | 数据安全要求高，内网部署 |
+项目支持国内外绝大多数主流大模型，通过 AI 模型池统一管理，支持主备降级链。
 
-**本地模型推荐**：Qwen2.5、Llama3、DeepSeek-Coder、Yi、ChatGLM、Phi-3 等开源大模型（兼容 OpenAI 接口）。
+| 类型 | 提供商/模型 | 接入方式 | 推荐场景 |
+|------|------------|---------|---------|
+| **国内云 API** | 火山引擎 · 豆包 (Doubao) | 原生 API | 国内用户推荐，稳定快速 |
+| **国内云 API** | 阿里云 · 通义千问 (Qwen) | OpenAI 兼容 | 国内企业级应用 |
+| **国内云 API** | DeepSeek (深度求索) | OpenAI 兼容 | 代码生成、推理能力强 |
+| **国内云 API** | 智谱 AI (GLM-4) | OpenAI 兼容 | 中文理解优秀 |
+| **国内云 API** | Moonshot · Kimi | OpenAI 兼容 | 长文本处理 |
+| **国内云 API** | 百度 · 文心一言 | OpenAI 兼容 | 国内企业应用 |
+| **国内云 API** | 零一万物 (Yi) | OpenAI 兼容 | 开源模型 |
+| **国内云 API** | 百川智能 (Baichuan) | OpenAI 兼容 | 开源模型 |
+| **国际云 API** | OpenAI (GPT-4o, o1, o3) | 原生 API | 有外网环境用户 |
+| **国际云 API** | Anthropic Claude | OpenAI 兼容层 | 复杂推理任务 |
+| **国际云 API** | Meta Llama | Ollama/vLLM | 开源模型 |
+| **国际云 API** | Mistral | OpenAI 兼容 | 开源模型 |
+| **本地部署** | Ollama | OpenAI 兼容 | 数据安全要求高，内网部署 |
+| **本地部署** | LM Studio | OpenAI 兼容 | 桌面端本地模型 |
+| **本地部署** | vLLM | OpenAI 兼容 | 高性能推理服务 |
+| **本地部署** | 其他 OpenAI 兼容接口 | OpenAI 兼容 | 任意兼容服务 |
+
+**本地模型推荐**：Qwen2.5、Llama3、DeepSeek-Coder、Yi、ChatGLM、Phi-3、Mistral 等开源大模型。
+
+**特性**：
+- ✅ AI 模型池统一管理，支持添加任意数量模型
+- ✅ 主备模型降级链（primary_model_id + fallback_model_id）
+- ✅ 每个提供商独立熔断器，防止单点故障
+- ✅ 拖拽排序定义优先级
+- ✅ 模型连通性测试验证
+- ✅ API Key 继承机制，减少重复配置
 
 ## 技术栈
 

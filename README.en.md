@@ -43,7 +43,7 @@ graph TB
     Nginx --> Express["Express Backend<br/>31 Routes | 20+ Services | JWT Auth"]
     React <-->|"WebSocket Real-time"| Express
     Express --> SQLite[("SQLite Database<br/>39 Tables | AES-256 Encryption")]
-    Express --> LLM["🤖 LLM API<br/>Doubao | OpenAI"]
+    Express --> LLM["🤖 LLM Model Pool<br/>Doubao | DeepSeek | Qwen<br/>OpenAI | ZhiPu | Local Models"]
     Express --> SSH["🖥️ SSH Remote Servers"]
     Express --> Webhook["🚨 Alert Webhook<br/>Prometheus | Zabbix"]
     Express --> Notify["📬 Notifications<br/>Email | WeCom | DingTalk"]
@@ -97,13 +97,36 @@ Multi-layered security design to protect your servers and data:
 
 ## Supported AI Models
 
-| Type | Provider/Framework | Support Status | Recommended Scenario |
-|------|------------|---------|---------|
-| **Domestic Cloud API** | VolcEngine · Doubao | ✅ Fully Supported | Recommended for users in China |
-| **International Cloud API** | OpenAI (GPT-4o, etc.) | ✅ Fully Supported | Users with external network access |
-| **Local Deployment** | Ollama / LM Studio / vLLM | ✅ Fully Supported | High data security requirements |
+The project supports most mainstream large language models worldwide, managed through a unified AI model pool with primary-backup degradation chains.
 
-**Recommended Local Models**: Qwen2.5, Llama3, DeepSeek-Coder, Yi, ChatGLM, Phi-3, etc. (OpenAI-compatible).
+| Type | Provider/Model | Integration | Recommended Scenario |
+|------|------------|---------|---------|
+| **Domestic Cloud API** | VolcEngine · Doubao | Native API | Recommended for users in China |
+| **Domestic Cloud API** | Alibaba Cloud · Qwen | OpenAI Compatible | Enterprise applications in China |
+| **Domestic Cloud API** | DeepSeek | OpenAI Compatible | Strong code generation and reasoning |
+| **Domestic Cloud API** | ZhiPu AI (GLM-4) | OpenAI Compatible | Excellent Chinese understanding |
+| **Domestic Cloud API** | Moonshot · Kimi | OpenAI Compatible | Long text processing |
+| **Domestic Cloud API** | Baidu · Wenxin | OpenAI Compatible | Enterprise applications in China |
+| **Domestic Cloud API** | 01.AI (Yi) | OpenAI Compatible | Open source models |
+| **Domestic Cloud API** | Baichuan | OpenAI Compatible | Open source models |
+| **International Cloud API** | OpenAI (GPT-4o, o1, o3) | Native API | Users with external network access |
+| **International Cloud API** | Anthropic Claude | OpenAI Compatible Layer | Complex reasoning tasks |
+| **International Cloud API** | Meta Llama | Ollama/vLLM | Open source models |
+| **International Cloud API** | Mistral | OpenAI Compatible | Open source models |
+| **Local Deployment** | Ollama | OpenAI Compatible | High data security requirements |
+| **Local Deployment** | LM Studio | OpenAI Compatible | Desktop local models |
+| **Local Deployment** | vLLM | OpenAI Compatible | High-performance inference |
+| **Local Deployment** | Other OpenAI Compatible | OpenAI Compatible | Any compatible service |
+
+**Recommended Local Models**: Qwen2.5, Llama3, DeepSeek-Coder, Yi, ChatGLM, Phi-3, Mistral, etc.
+
+**Features**:
+- ✅ Unified AI model pool management, support adding unlimited models
+- ✅ Primary-backup model degradation chain (primary_model_id + fallback_model_id)
+- ✅ Independent circuit breaker per provider, preventing single point of failure
+- ✅ Drag-and-drop sorting to define priority
+- ✅ Model connectivity testing
+- ✅ API Key inheritance mechanism to reduce duplicate configuration
 
 ## Tech Stack
 
