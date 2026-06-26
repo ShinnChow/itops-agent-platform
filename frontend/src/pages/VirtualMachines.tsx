@@ -110,8 +110,8 @@ export default function VirtualMachines() {
       </Row>
 
       <div className="flex items-center gap-3 mb-4">
-        <Input placeholder="搜索名称/IP..." prefix={<Search size={14} className="text-gray-400" />} className="w-64" value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} allowClear />
-        <Select placeholder="状态筛选" className="w-32" value={statusFilter || undefined} onChange={v => { setStatusFilter(v || ''); setPage(1); }} allowClear>
+        <Input placeholder="搜索名称/IP..." prefix={<Search size={14} className="text-gray-400" />} className="w-64" value={search} onChange={(e: React.ChangeEvent<HTMLInputElement>) => { setSearch(e.target.value); setPage(1); }} allowClear />
+        <Select placeholder="状态筛选" className="w-32" value={statusFilter || undefined} onChange={(v: string) => { setStatusFilter(v || ''); setPage(1); }} allowClear>
           <Select.Option value="running">运行中</Select.Option>
           <Select.Option value="stopped">已关机</Select.Option>
           <Select.Option value="suspended">已挂起</Select.Option>
@@ -122,7 +122,7 @@ export default function VirtualMachines() {
       </div>
 
       <Table columns={columns} dataSource={data} rowKey="id" loading={loading}
-        pagination={{ current: page, pageSize, total, onChange: (p, ps) => { setPage(p); setPageSize(ps); } }}
+        pagination={{ current: page, pageSize, total, onChange: (p: number, ps: number) => { setPage(p); setPageSize(ps); } }}
       />
 
       <Modal title={editing ? '编辑虚拟机' : '新建虚拟机'} open={modalOpen} onOk={handleSave} onCancel={() => { setModalOpen(false); setEditing(null); }} width={600}>

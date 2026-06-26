@@ -80,8 +80,8 @@ export default function Containers() {
   return (
     <div className="p-6">
       <div className="flex items-center gap-3 mb-4">
-        <Input placeholder="搜索容器名/镜像..." prefix={<Search size={14} className="text-gray-400" />} className="w-64" value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} allowClear />
-        <Select placeholder="主机筛选" className="w-40" value={hostFilter || undefined} onChange={v => { setHostFilter(v || ''); setPage(1); }} allowClear>
+        <Input placeholder="搜索容器名/镜像..." prefix={<Search size={14} className="text-gray-400" />} className="w-64" value={search} onChange={(e: React.ChangeEvent<HTMLInputElement>) => { setSearch(e.target.value); setPage(1); }} allowClear />
+        <Select placeholder="主机筛选" className="w-40" value={hostFilter || undefined} onChange={(v: string) => { setHostFilter(v || ''); setPage(1); }} allowClear>
           {hosts.map(h => <Select.Option key={h} value={h}>{h}</Select.Option>)}
         </Select>
         <Button icon={<RefreshCw size={14} />} onClick={fetchData}>刷新</Button>
@@ -89,7 +89,7 @@ export default function Containers() {
       </div>
 
       <Table columns={columns} dataSource={data} rowKey="id" loading={loading}
-        pagination={{ current: page, pageSize, total, onChange: (p, ps) => { setPage(p); setPageSize(ps); } }}
+        pagination={{ current: page, pageSize, total, onChange: (p: number, ps: number) => { setPage(p); setPageSize(ps); } }}
       />
 
       <Drawer title="容器详情" open={detailVisible} onClose={() => setDetailVisible(false)} width={480}>

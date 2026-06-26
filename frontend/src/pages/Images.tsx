@@ -72,14 +72,14 @@ export default function Images() {
   return (
     <div className="p-6">
       <div className="flex items-center gap-3 mb-4">
-        <Input placeholder="搜索镜像..." prefix={<Search size={14} className="text-gray-400" />} className="w-64" value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} allowClear />
+        <Input placeholder="搜索镜像..." prefix={<Search size={14} className="text-gray-400" />} className="w-64" value={search} onChange={(e: React.ChangeEvent<HTMLInputElement>) => { setSearch(e.target.value); setPage(1); }} allowClear />
         <Button icon={<RefreshCw size={14} />} onClick={fetchData}>刷新</Button>
         <Button icon={<RefreshCw size={14} />} onClick={handleSync}>同步镜像</Button>
         <Button type="primary" icon={<Download size={14} />} onClick={() => { form.resetFields(); setPullOpen(true); }}>拉取镜像</Button>
       </div>
 
       <Table columns={columns} dataSource={data} rowKey="id" loading={loading}
-        pagination={{ current: page, pageSize, total, onChange: (p, ps) => { setPage(p); setPageSize(ps); } }}
+        pagination={{ current: page, pageSize, total, onChange: (p: number, ps: number) => { setPage(p); setPageSize(ps); } }}
       />
 
       <Modal title="拉取镜像" open={pullOpen} onOk={handlePull} onCancel={() => setPullOpen(false)}>
