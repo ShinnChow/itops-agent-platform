@@ -142,6 +142,13 @@ graph TB
 
 ## 快速开始
 
+### 最简单部署方式（推荐）
+```
+#前提是已有docker环境，直接执行下面一键部署命令
+curl -sL https://gitee.com/IT_Oline/itops-agent-platform/raw/main/deploy.sh -o deploy.sh && chmod +x deploy.sh && ./deploy.sh
+
+```
+
 ### 方式一：一键脚本部署（推荐）
 
 ```bash
