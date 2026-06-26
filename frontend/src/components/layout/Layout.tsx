@@ -49,6 +49,14 @@ import {
   FlaskConical,
   Radio,
   Database,
+  Box,
+  HardDrive,
+  Cpu,
+  Building2,
+  Image as ImageIcon,
+  Container,
+  LayoutGrid,
+  Router,
 } from 'lucide-react';
 import clsx from 'clsx';
 import { useAuth } from '../../contexts/AuthContext';
@@ -70,12 +78,31 @@ const navigationGroups = [
     items: [
       { name: '服务器管理', href: '/servers', icon: Server },
       { name: '网络设备', href: '/network-devices', icon: Network },
+      { name: '网络管理', href: '/networks', icon: Router },
       { name: 'SNMP 管理', href: '/snmp', icon: Radio },
       { name: '网络设备发现', href: '/network-discovery', icon: Globe },
       { name: '数据库管理', href: '/db-connections', icon: Database },
       { name: '认证凭证', href: '/ssh-keys', icon: Key },
       { name: 'Web 终端', href: '/terminal', icon: Terminal },
       { name: '远程桌面', href: '/remote-desktop', icon: MonitorPlay },
+    ]
+  },
+  {
+    name: '容器与虚拟化',
+    icon: Box,
+    items: [
+      { name: '容器管理', href: '/containers', icon: Container },
+      { name: '镜像管理', href: '/images', icon: ImageIcon },
+      { name: '存储卷', href: '/volumes', icon: HardDrive },
+      { name: '虚拟机管理', href: '/virtual-machines', icon: Cpu },
+    ]
+  },
+  {
+    name: '数据中心',
+    icon: Building2,
+    items: [
+      { name: '数据中心管理', href: '/dc-manage', icon: LayoutGrid },
+      { name: '机房3D监控', href: '/data-room', icon: Monitor },
     ]
   },
   {
@@ -88,6 +115,7 @@ const navigationGroups = [
       { name: '审批中心', href: '/approvals', icon: ShieldCheck },
       { name: '脚本中心', href: '/scripts', icon: FileCode },
       { name: '定时任务', href: '/scheduled-tasks', icon: Clock },
+      { name: '配置模板', href: '/config-templates', icon: FileText },
     ]
   },
   {
@@ -133,6 +161,8 @@ const navigationGroups = [
     items: [
       { name: '用户管理', href: '/users', icon: Users },
       { name: '前端测试中心', href: '/frontend-tests', icon: FlaskConical },
+      { name: '工具链接', href: '/tool-links', icon: Link2 },
+      { name: '工具链接管理', href: '/tool-links-manage', icon: Wrench },
       { name: '设置', href: '/settings', icon: Settings },
     ]
   },
