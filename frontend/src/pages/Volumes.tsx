@@ -97,14 +97,14 @@ export default function Volumes() {
   return (
     <div className="p-6">
       <div className="flex items-center gap-3 mb-4">
-        <Input placeholder="搜索卷名/驱动..." prefix={<Search size={14} className="text-gray-400" />} className="w-64" value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} allowClear />
+        <Input placeholder="搜索卷名/驱动..." prefix={<Search size={14} className="text-gray-400" />} className="w-64" value={search} onChange={(e: React.ChangeEvent<HTMLInputElement>) => { setSearch(e.target.value); setPage(1); }} allowClear />
         <Button icon={<RefreshCw size={14} />} onClick={fetchData}>刷新</Button>
         <Button icon={<RefreshCw size={14} />} onClick={handleSync}>同步卷</Button>
         <Button type="primary" icon={<Plus size={14} />} onClick={() => { setEditing(null); form.resetFields(); setModalOpen(true); }}>新建卷</Button>
       </div>
 
       <Table columns={columns} dataSource={data} rowKey="id" loading={loading}
-        pagination={{ current: page, pageSize, total, onChange: (p, ps) => { setPage(p); setPageSize(ps); } }}
+        pagination={{ current: page, pageSize, total, onChange: (p: number, ps: number) => { setPage(p); setPageSize(ps); } }}
       />
 
       <Modal title={editing ? '编辑存储卷' : '新建存储卷'} open={modalOpen} onOk={handleSave} onCancel={() => { setModalOpen(false); setEditing(null); }}>

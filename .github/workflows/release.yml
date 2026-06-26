@@ -225,6 +225,13 @@ jobs:
           echo "| Backend | \`${{ env.ALIYUN_REGISTRY }}/${{ env.ALIYUN_NAMESPACE }}/${{ env.ALIYUN_REPO }}:${{ env.IMAGE_PREFIX }}-backend-${VERSION}\` |" >> release_notes.md
           echo "| Frontend | \`${{ env.ALIYUN_REGISTRY }}/${{ env.ALIYUN_NAMESPACE }}/${{ env.ALIYUN_REPO }}:${{ env.IMAGE_PREFIX }}-frontend-${VERSION}\` |" >> release_notes.md
           echo "" >> release_notes.md
+          echo "### 🚀 一键部署" >> release_notes.md
+          echo "" >> release_notes.md
+          echo "\`\`\`bash" >> release_notes.md
+          echo "# 前提是已有docker环境，直接执行下面一键部署命令（2分钟即可自动完成部署）" >> release_notes.md
+          echo "curl -sL https://gitee.com/IT_Oline/itops-agent-platform/raw/main/deploy.sh -o deploy.sh && chmod +x deploy.sh && ./deploy.sh" >> release_notes.md
+          echo "\`\`\`" >> release_notes.md
+          echo "" >> release_notes.md
           echo "### 📝 Changes" >> release_notes.md
           echo "" >> release_notes.md
           # Try to get changes since last tag, fallback to recent commits

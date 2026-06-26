@@ -102,8 +102,8 @@ export default function ConfigTemplates() {
   return (
     <div className="p-6">
       <div className="flex items-center gap-3 mb-4">
-        <Input placeholder="搜索模板..." prefix={<Search size={14} className="text-gray-400" />} className="w-64" value={search} onChange={e => { setSearch(e.target.value); setPage(1); }} allowClear />
-        <Select placeholder="类型筛选" className="w-32" value={typeFilter || undefined} onChange={v => { setTypeFilter(v || ''); setPage(1); }} allowClear>
+        <Input placeholder="搜索模板..." prefix={<Search size={14} className="text-gray-400" />} className="w-64" value={search} onChange={(e: React.ChangeEvent<HTMLInputElement>) => { setSearch(e.target.value); setPage(1); }} allowClear />
+        <Select placeholder="类型筛选" className="w-32" value={typeFilter || undefined} onChange={(v: string) => { setTypeFilter(v || ''); setPage(1); }} allowClear>
           <Select.Option value="generic">通用</Select.Option>
           <Select.Option value="nginx">Nginx</Select.Option>
           <Select.Option value="docker">Docker</Select.Option>
@@ -114,7 +114,7 @@ export default function ConfigTemplates() {
       </div>
 
       <Table columns={columns} dataSource={data} rowKey="id" loading={loading}
-        pagination={{ current: page, pageSize, total, onChange: (p, ps) => { setPage(p); setPageSize(ps); } }}
+        pagination={{ current: page, pageSize, total, onChange: (p: number, ps: number) => { setPage(p); setPageSize(ps); } }}
       />
 
       <Modal title={editing ? '编辑配置模板' : '新建配置模板'} open={modalOpen} onOk={handleSave} onCancel={() => { setModalOpen(false); setEditing(null); setVariables([]); }} width={700}>
@@ -138,7 +138,7 @@ export default function ConfigTemplates() {
             </div>
             {variables.map((v, i) => (
               <div key={i} className="flex items-center gap-2 mb-2">
-                <Input size="small" placeholder="变量名称" value={v} onChange={e => updateVariable(i, e.target.value)} className="w-48" />
+                <Input size="small" placeholder="变量名称" value={v} onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateVariable(i, e.target.value)} className="w-48" />
                 <Button size="small" danger icon={<Trash2 size={12} />} onClick={() => removeVariable(i)} />
               </div>
             ))}

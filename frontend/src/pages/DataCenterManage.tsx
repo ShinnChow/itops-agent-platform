@@ -201,7 +201,7 @@ export default function DataCenterManage() {
             prefix={<Search size={14} className="text-gray-500" />}
             placeholder="搜索设备名称或机柜编号..."
             value={deviceSearch}
-            onChange={e => setDeviceSearch(e.target.value)}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setDeviceSearch(e.target.value)}
             allowClear
             className="max-w-sm"
           />
@@ -789,7 +789,7 @@ export default function DataCenterManage() {
             placeholder="搜索机房名称/标签..."
             className="mb-4 max-w-xs"
             value={roomSearch}
-            onChange={e => setRoomSearch(e.target.value)}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setRoomSearch(e.target.value)}
             allowClear
           />
           <Table columns={roomColumns} dataSource={filteredRooms.map(r => ({ ...r, key: r.id }))} loading={loading} pagination={false} />
@@ -804,7 +804,7 @@ export default function DataCenterManage() {
               prefix={<Search size={14} className="text-gray-500" />}
               placeholder="搜索机柜编号..."
               value={rackSearch}
-              onChange={e => setRackSearch(e.target.value)}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setRackSearch(e.target.value)}
               allowClear
               style={{ width: 200 }}
             />
@@ -813,7 +813,7 @@ export default function DataCenterManage() {
               allowClear
               style={{ width: 120 }}
               value={rackStatusFilter || undefined}
-              onChange={(v) => setRackStatusFilter(v || '')}
+              onChange={(v: string) => setRackStatusFilter(v || '')}
             >
               <Select.Option value="normal">正常</Select.Option>
               <Select.Option value="warning">警告</Select.Option>
@@ -875,7 +875,7 @@ export default function DataCenterManage() {
               allowClear
               style={{ width: 130 }}
               value={lifecycleFilter || undefined}
-              onChange={(v) => setLifecycleFilter(v || '')}
+              onChange={(v: string) => setLifecycleFilter(v || '')}
             >
               <Select.Option value="mounted">上架</Select.Option>
               <Select.Option value="unmounted">下架</Select.Option>
@@ -968,7 +968,7 @@ export default function DataCenterManage() {
           <Form.Item name="rack_id" hidden><Input /></Form.Item>
           <Form.Item label="机柜"><strong className="text-blue-400">{selectedRack?.name}</strong></Form.Item>
           <Form.Item name="device_type" label="设备类型" rules={[{ required: true }]}>
-            <Select onChange={(v) => loadAvailDevices(v)}>
+            <Select onChange={(v: string) => loadAvailDevices(v)}>
               <Select.Option value="server">服务器</Select.Option>
               <Select.Option value="network_device">网络设备</Select.Option>
               <Select.Option value="virtual_machine">虚拟机</Select.Option>
@@ -1044,7 +1044,7 @@ export default function DataCenterManage() {
       <Modal title="导入数据中心数据" open={importModalOpen} onOk={handleImport} onCancel={() => { setImportModalOpen(false); setImportText(''); }}
         confirmLoading={importLoading} width={600}>
         <div className="mb-2 text-sm text-gray-400">粘贴从导出功能获得的JSON数据：</div>
-        <Input.TextArea rows={12} value={importText} onChange={e => setImportText(e.target.value)}
+        <Input.TextArea rows={12} value={importText} onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setImportText(e.target.value)}
           placeholder='{"rooms": [...], "racks": [...], "slots": [...], "pdus": [...]}' className="font-mono text-xs" />
       </Modal>
 
