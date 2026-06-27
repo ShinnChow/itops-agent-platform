@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Box, Image, HardDrive, Globe, Server, Plus, Trash2, Search, RefreshCw,
   Play, Square, RotateCcw, Eye, FileText, Activity, Download, X,
-  ChevronLeft, ChevronRight, Monitor, Terminal,
+  ChevronLeft, ChevronRight, Monitor, Terminal, Edit,
 } from 'lucide-react';
 import api from '../lib/api';
 import { useToast } from '../contexts/ToastContext';
@@ -176,6 +176,7 @@ export default function Containers() {
 
   // ── Endpoint tab state ──
   const [showEpCreateModal, setShowEpCreateModal] = useState(false);
+  const [editingEpId, setEditingEpId] = useState<string | null>(null);
   const [epName, setEpName] = useState('');
   const [epHost, setEpHost] = useState('');
   const [epPort, setEpPort] = useState('2375');
@@ -404,6 +405,25 @@ export default function Containers() {
     onError: () => toast.error('添加端点失败'),
   });
 
+  const updateEndpointMutation = useMutation({
+    mutationFn: () =>
+      api.put(`/api/containers/endpoints/${editingEpId}`, {
+        name: epName, host: epHost,
+        port: parseInt(epPort) || 2375, protocol: epProtocol,
+        tlsCa: epProtocol === 'tcp+tls' ? epTlsCa || undefined : undefined,
+        tlsCert: epProtocol === 'tcp+tls' ? epTlsCert || undefined : undefined,
+        tlsKey: epProtocol === 'tcp+tls' ? epTlsKey || undefined : undefined,
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: endpointsListQueryKey });
+      queryClient.invalidateQueries({ queryKey: endpointsQueryKey });
+      toast.success('端点已更新');
+      setShowEpCreateModal(false);
+      resetEpForm();
+    },
+    onError: () => toast.error('更新端点失败'),
+  });
+
   const deleteEndpointMutation = useMutation({
     mutationFn: (id: string) => api.delete(`/api/containers/endpoints/${id}`),
     onSuccess: () => {
@@ -415,7 +435,7 @@ export default function Containers() {
   });
 
   const testEndpointMutation = useMutation({
-    mutationFn: (ep: { host: string; port: number; protocol: string }) =>
+    mutationFn: (ep: { host: string; port: number; protocol: string; tlsCa?: string; tlsCert?: string; tlsKey?: string }) =>
       api.post('/api/containers/endpoints/test', ep),
     onSuccess: (res) => {
       const d = res.data.data;
@@ -448,6 +468,19 @@ export default function Containers() {
   function resetEpForm() {
     setEpName(''); setEpHost(''); setEpPort('2375'); setEpProtocol('tcp');
     setEpTlsCa(''); setEpTlsCert(''); setEpTlsKey('');
+    setEditingEpId(null);
+  }
+
+  function openEpEditModal(ep: EndpointItem) {
+    setEditingEpId(ep.id);
+    setEpName(ep.name);
+    setEpHost(ep.host);
+    setEpPort(String(ep.port || 2375));
+    setEpProtocol(ep.protocol || 'tcp');
+    setEpTlsCa(ep.tlsCa || '');
+    setEpTlsCert(ep.tlsCert || '');
+    setEpTlsKey(ep.tlsKey || '');
+    setShowEpCreateModal(true);
   }
 
   function withEndpointParams(params?: Record<string, unknown>): Record<string, unknown> {
@@ -1147,6 +1180,13 @@ export default function Containers() {
                               <div className="flex items-center justify-end gap-1">
                                 {ep.id !== 'local' && (
                                   <button
+                                    onClick={() => openEpEditModal(ep)}
+                                    className="p-1.5 rounded hover:bg-blue-500/10 text-text-secondary hover:text-blue-400 transition-colors text-xs"
+                                    title="编辑"
+                                  ><Edit className="w-3.5 h-3.5" /></button>
+                                )}
+                                {ep.id !== 'local' && (
+                                  <button
                                     onClick={() => refreshEndpointMutation.mutate(ep.id)}
                                     className="p-1.5 rounded hover:bg-green-500/10 text-text-secondary hover:text-green-400 transition-colors text-xs"
                                     title="刷新"
@@ -1154,7 +1194,7 @@ export default function Containers() {
                                 )}
                                 {ep.id !== 'local' && (
                                   <button
-                                    onClick={() => testEndpointMutation.mutate({ host: ep.host, port: ep.port, protocol: ep.protocol })}
+                                    onClick={() => testEndpointMutation.mutate({ host: ep.host, port: ep.port, protocol: ep.protocol, tlsCa: ep.tlsCa, tlsCert: ep.tlsCert, tlsKey: ep.tlsKey })}
                                     className="p-1.5 rounded hover:bg-blue-500/10 text-text-secondary hover:text-blue-400 transition-colors text-xs"
                                     title="测试"
                                   ><Activity className="w-3.5 h-3.5" /></button>
@@ -1356,12 +1396,12 @@ export default function Containers() {
         </div>
       )}
 
-      {/* ── Create Endpoint Modal ── */}
+      {/* ── Create / Edit Endpoint Modal ── */}
       {showEpCreateModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => { setShowEpCreateModal(false); resetEpForm(); }}>
           <div className="bg-surface rounded-lg border border-border w-full max-w-lg max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between p-4 border-b border-border">
-              <h3 className="text-lg font-semibold text-text-primary">添加 Docker 端点</h3>
+              <h3 className="text-lg font-semibold text-text-primary">{editingEpId ? '编辑 Docker 端点' : '添加 Docker 端点'}</h3>
               <button onClick={() => { setShowEpCreateModal(false); resetEpForm(); }} className="text-text-secondary hover:text-text-primary"><X className="w-5 h-5" /></button>
             </div>
             <div className="p-6 space-y-4">
@@ -1372,7 +1412,9 @@ export default function Containers() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-text-primary mb-1">主机 <span className="text-red-400">*</span></label>
-                  <input type="text" value={epHost} onChange={(e) => setEpHost(e.target.value)} placeholder="192.168.1.100" className="w-full px-3 py-2 bg-background border border-border rounded-lg text-text-primary placeholder-text-tertiary focus:outline-none focus:border-blue-500 text-sm" />
+                  <input type="text" value={epHost} onChange={(e) => setEpHost(e.target.value)}
+                    disabled={!!editingEpId} placeholder="192.168.1.100"
+                    className="w-full px-3 py-2 bg-background border border-border rounded-lg text-text-primary placeholder-text-tertiary focus:outline-none focus:border-blue-500 text-sm disabled:opacity-50" />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-text-primary mb-1">端口</label>
@@ -1405,9 +1447,14 @@ export default function Containers() {
               )}
               <div className="flex gap-2">
                 <button onClick={() => { setShowEpCreateModal(false); resetEpForm(); }} className="flex-1 px-4 py-2 bg-slate-700 hover:bg-slate-600 text-text-primary rounded-lg transition-colors text-sm">取消</button>
-                <button onClick={() => createEndpointMutation.mutate()} disabled={!epName.trim() || !epHost.trim() || createEndpointMutation.isPending}
+                <button
+                  onClick={() => editingEpId ? updateEndpointMutation.mutate() : createEndpointMutation.mutate()}
+                  disabled={!epName.trim() || (!editingEpId && !epHost.trim()) || createEndpointMutation.isPending || updateEndpointMutation.isPending}
                   className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg flex items-center justify-center gap-2 transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed">
-                  {createEndpointMutation.isPending ? '添加中...' : <><Plus className="w-4 h-4" /> 添加</>}
+                  {editingEpId
+                    ? (updateEndpointMutation.isPending ? '保存中...' : <><Edit className="w-4 h-4" /> 保存</>)
+                    : (createEndpointMutation.isPending ? '添加中...' : <><Plus className="w-4 h-4" /> 添加</>)
+                  }
                 </button>
               </div>
             </div>

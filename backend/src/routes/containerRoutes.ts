@@ -107,7 +107,7 @@ router.delete('/endpoints/:id', requireRole('admin', 'operator'), async (req: Re
   }
 });
 
-// POST /endpoints/:id/test — 测试连接
+// POST /endpoints/test — 测试连接
 router.post('/endpoints/test', requireRole('admin', 'operator'), async (req: Request, res: Response) => {
   try {
     const result = await multiHostDockerService.testConnection(req.body);

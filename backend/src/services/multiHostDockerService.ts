@@ -107,7 +107,17 @@ class MultiHostDockerService {
       if (config.protocol === 'socket') {
         docker = new Docker({ socketPath: '/var/run/docker.sock' });
       } else {
-        docker = new Docker({ host: config.host, port: config.port || 2375 });
+        const opts: any = {
+          host: config.host,
+          port: config.port || 2375,
+          protocol: config.protocol === 'tcp+tls' ? 'https' : 'http',
+        };
+        if (config.tlsCa || config.tls_ca) {
+          opts.ca = Buffer.from(config.tlsCa || config.tls_ca);
+          opts.cert = Buffer.from(config.tlsCert || config.tls_cert);
+          opts.key = Buffer.from(config.tlsKey || config.tls_key);
+        }
+        docker = new Docker(opts);
       }
       await docker.ping();
       const info = await docker.info();
