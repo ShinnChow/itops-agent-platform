@@ -6,8 +6,6 @@
 
 本项目自 2026年5月27日 起，所有新提交的代码采用 **Mozilla Public License 2.0 (MPL-2.0)** 许可证开源。本项目禁止闭源二次开发、打包销售、SaaS化运营等商业用途，永久开源。
 
-👤 作者：谭策 | IT Online
-
 ***
 
 <br />
@@ -51,8 +49,10 @@
 
 🌐 项目官网：<https://www.zjzwfw.cloud/ITOpsAgentinfo>
 
-📦 镜像仓库：[GitHub](https://github.com/qinshihu/itops-agent-platform)  |  [Gitee](https://gitee.com/IT_Oline/itops-agent-platform)  |  [GitCode](https://gitcode.com/gcw_IM7aAihp/itops-agent-platform)
+📦 代码仓库：[GitHub](https://github.com/qinshihu/itops-agent-platform)  |  [Gitee](https://gitee.com/IT_Oline/itops-agent-platform)  |  [GitCode](https://gitcode.com/gcw_IM7aAihp/itops-agent-platform)
+
 ---------------------------------------------------------------
+
 
 ## 🎯 谁在用 / 谁适合用？
 
