@@ -338,7 +338,7 @@ export async function initializeDatabase(): Promise<void> {
 
   // Run AI model migration (delayed to avoid circular import)
   // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const { migrateOldConfigToAIModels, migrateOldAgents } = await import('../services/aiModelService');
+  const { migrateOldConfigToAIModels, migrateOldAgents } = await import('../modules/ai/services/aiModelService');
   migrateOldConfigToAIModels();
   migrateOldAgents();
 

@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import db from '../models/database';
 import { env } from '../utils/env';
-import { tokenBlacklist } from '../services/tokenBlacklist';
+import { tokenBlacklist } from '../modules/auth/services/tokenBlacklist';
 
 interface AuthUser {
   id: string;

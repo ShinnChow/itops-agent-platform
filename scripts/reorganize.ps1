@@ -282,6 +282,34 @@ $MAPPINGS = @(
 
     # --- shared/constants ---
     @{s="constants\index.ts"; d="shared\constants\index.ts"}
+
+    # --- ai/edge (已在子目录中) ---
+    @{s="services\edge\EdgeAgent.ts"; d="modules\ai\services\edge\EdgeAgent.ts"}
+    @{s="services\edge\SystemCollector.ts"; d="modules\ai\services\edge\SystemCollector.ts"}
+    @{s="services\edge\types.ts"; d="modules\ai\services\edge\types.ts"}
+
+    # --- ai/multiAgent (已在子目录中) ---
+    @{s="services\multiAgent\Coordinator.ts"; d="modules\ai\services\multiAgent\Coordinator.ts"}
+    @{s="services\multiAgent\SpecialistBase.ts"; d="modules\ai\services\multiAgent\SpecialistBase.ts"}
+    @{s="services\multiAgent\SpecialistRegistry.ts"; d="modules\ai\services\multiAgent\SpecialistRegistry.ts"}
+    @{s="services\multiAgent\Specialists.ts"; d="modules\ai\services\multiAgent\Specialists.ts"}
+    @{s="services\multiAgent\index.ts"; d="modules\ai\services\multiAgent\index.ts"}
+    @{s="services\multiAgent\types.ts"; d="modules\ai\services\multiAgent\types.ts"}
+
+    # --- ai/providers (已在子目录中) ---
+    @{s="services\providers\ProviderRegistry.ts"; d="modules\ai\services\providers\ProviderRegistry.ts"}
+    @{s="services\providers\builtins.ts"; d="modules\ai\services\providers\builtins.ts"}
+    @{s="services\providers\extended.ts"; d="modules\ai\services\providers\extended.ts"}
+    @{s="services\providers\index.ts"; d="modules\ai\services\providers\index.ts"}
+    @{s="services\providers\types.ts"; d="modules\ai\services\providers\types.ts"}
+
+    # --- workflow 引擎 (已在子目录中) ---
+    @{s="services\workflow\WorkflowEngine.ts"; d="modules\workflow\services\WorkflowEngine.ts"}
+    @{s="services\workflow\types.ts"; d="modules\workflow\services\types.ts"}
+    @{s="services\workflowProviderRegistry.ts"; d="modules\workflow\services\workflowProviderRegistry.ts"}
+
+    # --- containers (已在子目录中) ---
+    @{s="services\vmManagement\index.ts"; d="modules\containers\services\vmManagement\index.ts"}
 )
 
 # schemas/*.ts 全部搬
