@@ -95,7 +95,7 @@ import configRepairRoutes from './routes/configRepairRoutes';
 import configTemplateRoutes from './routes/configTemplateRoutes';
 import containerRoutes from './routes/containerRoutes';
 import monitorRoutes from './routes/monitorRoutes';
-import dcInfrastructureRoutes from './routes/dcInfrastructureRoutes';
+import dcInfrastructureRoutes from './routes/dc';
 import dockerRoutes from './routes/dockerRoutes';
 import imageRoutes from './routes/imageRoutes';
 import toolLinkRoutes from './routes/toolLinkRoutes';
@@ -139,12 +139,17 @@ app.use(bodyParser.json({ limit: '50mb' }));
 app.use(bodyParser.urlencoded({ extended: true, limit: '50mb' }));
 
 import { initAlertService } from './services/alertService';
+import { startDCStatusPush, stopDCStatusPush } from './services/dcStatusService';
+import { initializeProviders } from './services/providers';
 
 async function initializeApp() {
   // 启动时仅检测 dbskiter，不在运行期自动安装依赖
   checkDbskiterAvailability().catch(() => { /* 错误已在函数内部记录 */ });
 
   await initializeDatabase();
+
+  // 初始化 Provider 生态系统
+  initializeProviders();
   
   // 初始化各个服务
   initAlertService();
@@ -208,6 +213,9 @@ async function initializeApp() {
   initTokenBlacklist();
   startCircuitBreakerCleanup();
   startApprovalTimeoutChecker();
+  
+  // DC 实时状态推送
+  startDCStatusPush(io, 5000);
   
   logger.info('✅ Application initialization complete');
 }
@@ -417,6 +425,9 @@ const gracefulShutdown = async (signal: string) => {
 
     schedulerService.shutdown();
     logger.info('Scheduler service stopped');
+
+    stopDCStatusPush();
+    logger.info('DC status service stopped');
 
     backupService.stopAutoBackup();
     logger.info('Backup service stopped');

@@ -11,6 +11,7 @@ import { alertWorkflowMappingService } from '../services/alertWorkflowMappingSer
 import { emitToAlerts } from '../websocket/handler';
 import { logger } from '../utils/logger';
 import { requireRole } from '../middleware/auth';
+import { alertProviderRegistry } from '../services/alertProviderRegistry';
 
 const router = Router();
 
@@ -479,6 +480,52 @@ router.post('/:id/process', async (req: Request, res: Response) => {
   } catch (error) {
     logger.error('Failed to trigger manual alert processing:', error);
     res.status(500).json({ success: false, error: '触发告警处理失败' });
+  }
+});
+
+// ==================== 告警 Provider 管理 API ====================
+
+router.get('/providers/list', (req: Request, res: Response) => {
+  try {
+    const { type } = req.query;
+    let providers;
+    
+    if (type) {
+      providers = alertProviderRegistry.listProvidersByType(type as any);
+    } else {
+      providers = alertProviderRegistry.listProviders();
+    }
+    
+    const simplifiedProviders = providers.map(p => ({
+      id: p.id,
+      name: p.name,
+      type: p.type,
+      configSchema: p.configSchema
+    }));
+    
+    res.json({ success: true, data: simplifiedProviders });
+  } catch (error) {
+    res.status(500).json({ success: false, error: 'Failed to get alert providers' });
+  }
+});
+
+router.post('/providers/fetch', async (req: Request, res: Response) => {
+  try {
+    const { providerId, config } = req.body;
+    
+    if (!providerId) {
+      return res.status(400).json({ success: false, error: 'Provider ID is required' });
+    }
+    
+    const provider = alertProviderRegistry.getProvider(providerId);
+    if (!provider) {
+      return res.status(404).json({ success: false, error: `Provider ${providerId} not found` });
+    }
+    
+    const alerts = await provider.fetchAlerts(config || {});
+    res.json({ success: true, data: alerts });
+  } catch (error) {
+    res.status(500).json({ success: false, error: 'Failed to fetch alerts from provider' });
   }
 });
 

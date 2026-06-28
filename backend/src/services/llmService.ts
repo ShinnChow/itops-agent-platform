@@ -170,27 +170,34 @@ function delay(ms: number): Promise<void> {
 
 // 带重试的 API 调用
 async function callWithRetry<T>(
-  fn: () => Promise<T>,
+  fn: (signal?: AbortSignal) => Promise<T>,
   maxRetries = 3,
   baseDelay = 1000,
   maxDelay = 10000,
-  breaker?: CircuitBreaker
+  breaker?: CircuitBreaker,
+  signal?: AbortSignal
 ): Promise<T> {
   let lastError: Error | null = null;
   
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    if (signal?.aborted) {
+      throw new Error('Request cancelled by deadline signal');
+    }
     if (breaker && !breaker.canCall()) {
       logger.error('🔌 Circuit breaker is OPEN, aborting retries');
       throw new Error('Circuit breaker is OPEN, rejecting request - service temporarily unavailable');
     }
 
     try {
-      const result = await fn();
+      const result = await fn(signal);
       if (attempt > 1) {
         logger.info(`✅ Request succeeded on attempt ${attempt}`);
       }
       return result;
-    } catch (error) {
+    } catch (error: any) {
+      if (error.name === 'CanceledError' || signal?.aborted) {
+        throw new Error('Request cancelled by deadline signal');
+      }
       lastError = error as Error;
       logger.warn(`⚠️ Request attempt ${attempt} failed: ${lastError.message}`);
       
@@ -309,6 +316,7 @@ const LOCAL_AI_CONFIG: LLMProviderConfig = {
 
 /**
  * 通用的LLM API调用函数
+ * @param signal 可选 AbortSignal，用于在多 Agent 编排中实现整体截止时间控制
  */
 async function callLLMAPI(
   config: LLMProviderConfig,
@@ -316,7 +324,8 @@ async function callLLMAPI(
   userInput: string,
   agentName: string,
   temperature: number,
-  agentId: string
+  agentId: string,
+  signal?: AbortSignal
 ): Promise<string> {
   const startTime = Date.now();
   const apiKey = getApiKey(db, config.apiKeySetting, config.apiKeyEnv);
@@ -360,7 +369,7 @@ async function callLLMAPI(
     }
     
     const response = await callWithRetry(
-      () =>
+      (s?: AbortSignal) =>
         axios.post(
           buildApiEndpoint(finalApiBase, 'chat/completions'),
           requestBody,
@@ -369,13 +378,15 @@ async function callLLMAPI(
               'Content-Type': 'application/json',
               'Authorization': `Bearer ${apiKey}`
             },
-            timeout: 60000
+            timeout: 60000,
+            signal: s,
           }
         ),
       3,
       1000,
       10000,
-      breaker
+      breaker,
+      signal
     );
 
     circuitBreakers.get(config.providerName)?.recordSuccess();
@@ -475,7 +486,7 @@ async function callModelWithConfig(
     }
     
     const response = await callWithRetry(
-      () =>
+      (s?: AbortSignal) =>
         axios.post(
           buildApiEndpoint(finalApiBase, 'chat/completions'),
           requestBody,
@@ -484,13 +495,15 @@ async function callModelWithConfig(
               'Content-Type': 'application/json',
               'Authorization': `Bearer ${apiKey}`
             },
-            timeout: 60000
+            timeout: 60000,
+            signal: s,
           }
         ),
       3,
       1000,
       10000,
-      breaker
+      breaker,
+      signal
     );
 
     circuitBreakers.get(providerName)?.recordSuccess();
@@ -539,49 +552,47 @@ async function callModelWithConfig(
  * @param userInput 用户输入
  * @param agentName Agent 名称（用于日志）
  * @param temperature 温度参数
+ * @param signal 可选 AbortSignal，用于多 Agent 编排整体截止时间控制
  */
 export async function callDoubaoAPI(
   systemPrompt: string,
   userInput: string,
   agentName: string = 'Agent',
   temperature: number = 0.7,
-  agentId: string = ''
+  agentId: string = '',
+  signal?: AbortSignal
 ): Promise<string> {
-  return callLLMAPI(DOUBAO_CONFIG, systemPrompt, userInput, agentName, temperature, agentId);
+  return callLLMAPI(DOUBAO_CONFIG, systemPrompt, userInput, agentName, temperature, agentId, signal);
 }
 
 /**
  * 调用 OpenAI API 获取响应
- * @param systemPrompt 系统提示词
- * @param userInput 用户输入
- * @param agentName Agent 名称（用于日志）
- * @param temperature 温度参数
+ * @param signal 可选 AbortSignal，用于多 Agent 编排整体截止时间控制
  */
 export async function callOpenAIAPI(
   systemPrompt: string,
   userInput: string,
   agentName: string = 'Agent',
   temperature: number = 0.7,
-  agentId: string = ''
+  agentId: string = '',
+  signal?: AbortSignal
 ): Promise<string> {
-  return callLLMAPI(OPENAI_CONFIG, systemPrompt, userInput, agentName, temperature, agentId);
+  return callLLMAPI(OPENAI_CONFIG, systemPrompt, userInput, agentName, temperature, agentId, signal);
 }
 
 /**
  * 调用本地 AI 大模型获取响应
- * @param systemPrompt 系统提示词
- * @param userInput 用户输入
- * @param agentName Agent 名称（用于日志）
- * @param temperature 温度参数
+ * @param signal 可选 AbortSignal，用于多 Agent 编排整体截止时间控制
  */
 export async function callLocalAIAPI(
   systemPrompt: string,
   userInput: string,
   agentName: string = 'Agent',
   temperature: number = 0.7,
-  agentId: string = ''
+  agentId: string = '',
+  signal?: AbortSignal
 ): Promise<string> {
-  return callLLMAPI(LOCAL_AI_CONFIG, systemPrompt, userInput, agentName, temperature, agentId);
+  return callLLMAPI(LOCAL_AI_CONFIG, systemPrompt, userInput, agentName, temperature, agentId, signal);
 }
 
 /**

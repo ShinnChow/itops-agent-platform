@@ -3,6 +3,7 @@ import { randomUUID } from 'crypto';
 import db from '../models/database';
 import { WorkflowParsed } from '../types';
 import { requireRole } from '../middleware/auth';
+import { workflowProviderRegistry } from '../services/workflowProviderRegistry';
 
 const router = Router();
 
@@ -151,6 +152,52 @@ router.get('/export/:id', (req: Request, res: Response) => {
     res.json({ success: true, data: exportData });
   } catch {
     res.status(500).json({ success: false, error: 'Failed to export workflow' });
+  }
+});
+
+// ==================== 工作流 Provider 管理 API ====================
+
+router.get('/providers/list', (req: Request, res: Response) => {
+  try {
+    const { type } = req.query;
+    let providers;
+    
+    if (type) {
+      providers = workflowProviderRegistry.listProvidersByType(type as any);
+    } else {
+      providers = workflowProviderRegistry.listProviders();
+    }
+    
+    const simplifiedProviders = providers.map(p => ({
+      id: p.id,
+      name: p.name,
+      type: p.type,
+      configSchema: p.configSchema
+    }));
+    
+    res.json({ success: true, data: simplifiedProviders });
+  } catch (error) {
+    res.status(500).json({ success: false, error: 'Failed to get workflow providers' });
+  }
+});
+
+router.post('/providers/test', async (req: Request, res: Response) => {
+  try {
+    const { providerId, config, context } = req.body;
+    
+    if (!providerId) {
+      return res.status(400).json({ success: false, error: 'Provider ID is required' });
+    }
+    
+    const provider = workflowProviderRegistry.getProvider(providerId);
+    if (!provider) {
+      return res.status(404).json({ success: false, error: `Provider ${providerId} not found` });
+    }
+    
+    const result = await provider.execute(config || {}, context || {});
+    res.json({ success: true, data: result });
+  } catch (error) {
+    res.status(500).json({ success: false, error: 'Failed to test workflow provider' });
   }
 });
 

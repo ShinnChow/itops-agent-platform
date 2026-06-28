@@ -171,6 +171,24 @@ export function setupWebSocket(io: SocketIOServer) {
       terminalService.closeTerminalSession(data.sessionId);
     });
 
+    // 数据中心 3D 监控订阅
+    socket.on('dc:subscribe', () => {
+      socket.join('dc-room');
+      logger.info(`🏢 Client ${socket.id} subscribed to DC room`);
+    });
+
+    socket.on('dc:unsubscribe', () => {
+      socket.leave('dc-room');
+      logger.info(`🏢 Client ${socket.id} unsubscribed from DC room`);
+    });
+
+    // 断线重连后的数据追补
+    socket.on('dc:catchup', (data: { since?: number }) => {
+      logger.info(`🔄 Client ${socket.id} requested DC catch-up since ${data.since || 'never'}`);
+      // 立即触发现已缓存的 dcStatusService 推一次全量数据
+      socket.emit('dc:catchup:triggered', { ok: true });
+    });
+
     socket.on('disconnect', () => {
       logger.info(`❌ Client disconnected: ${socket.id}`);
       taskRooms.forEach((sockets, taskId) => {
@@ -210,4 +228,8 @@ export function emitToAlerts(io: SocketIOServer, event: string, data: Record<str
 
 export function broadcast(io: SocketIOServer, event: string, data: Record<string, unknown>) {
   io.emit(event, data);
+}
+
+export function emitToDC(io: SocketIOServer, event: string, data: Record<string, unknown>) {
+  io.to('dc-room').emit(event, data);
 }

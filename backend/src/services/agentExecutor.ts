@@ -9,7 +9,106 @@ import {
   inferDatabaseOperation,
   formatResultToMarkdown,
 } from './dbskiterService';
+import { agentToolRegistry, AgentTool } from './agentToolRegistry';
 import type { Agent, Server } from '../types';
+
+/**
+ * 工具调用结果
+ */
+interface ToolExecutionResult {
+  success: boolean;
+  toolId: string;
+  result: string;
+  error?: string;
+}
+
+/**
+ * 从 LLM 响应中提取工具调用
+ * 简单的解析器，实际项目中可能需要更复杂的解析
+ */
+function extractToolCallFromResponse(response: string): {
+  hasToolCall: boolean;
+  toolId?: string;
+  args?: Record<string, any>;
+} {
+  const toolCallRegex = /\[TOOL_CALL\]\s*(\w+)\s*:\s*(\{[\s\S]*\})/;
+  const match = response.match(toolCallRegex);
+
+  if (match) {
+    try {
+      const toolId = match[1];
+      const args = JSON.parse(match[2]);
+      return {
+        hasToolCall: true,
+        toolId,
+        args,
+      };
+    } catch (error) {
+      logger.warn('解析工具调用失败:', error);
+    }
+  }
+
+  return { hasToolCall: false };
+}
+
+/**
+ * 执行工具调用
+ */
+async function executeToolCall(toolId: string, args: Record<string, any>): Promise<ToolExecutionResult> {
+  const tool = agentToolRegistry.getTool(toolId);
+  if (!tool) {
+    return {
+      success: false,
+      toolId,
+      result: '',
+      error: `未找到工具: ${toolId}`,
+    };
+  }
+
+  try {
+    logger.info(`🔧 执行工具: ${toolId}`, args);
+    const result = await tool.execute(args);
+    return {
+      success: true,
+      toolId,
+      result,
+    };
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    logger.error(`❌ 工具执行失败: ${toolId}`, error);
+    return {
+      success: false,
+      toolId,
+      result: '',
+      error: errorMessage,
+    };
+  }
+}
+
+/**
+ * 构建支持工具调用的系统提示
+ */
+function buildSystemPromptWithTools(originalPrompt: string): string {
+  const toolDescriptions = agentToolRegistry.generateToolDescriptions();
+  return `${originalPrompt}
+
+【可用工具】
+${toolDescriptions}
+
+【工具使用方式】
+如果需要执行某个操作，可以用下面的格式调用工具：
+[TOOL_CALL] tool_id: {"param1": "value1", "param2": "value2"}
+
+示例：
+[TOOL_CALL] ssh-exec: {"host": "192.168.1.100", "command": "uptime"}
+[TOOL_CALL] docker-list-containers: {"host": "192.168.1.100", "all": false}
+
+【注意】
+- 每次最多调用 1 个工具
+- 工具调用必须用 JSON 格式
+- 如果不需要调用工具，直接用自然语言回答即可
+`;
+}
 
 const AGENT_EXECUTION_TIMEOUT = 300000; // 5 分钟
 
@@ -55,14 +154,80 @@ export async function executeAgentNode(
     return await executeDatabaseAdminAgent(agentId, input, context);
   }
 
-  // 其他 Agent - 调用真实 LLM，增加超时保护
-  logger.info(`🤖 Calling LLM for agent ${agentName}`);
-  return await Promise.race([
-    executeAgentWithLLM(agentId, input),
-    new Promise<string>((_, reject) =>
-      setTimeout(() => reject(new Error(`Agent 执行超时（${AGENT_EXECUTION_TIMEOUT / 1000}s）`)), AGENT_EXECUTION_TIMEOUT)
-    )
-  ]);
+  // 其他 Agent - 支持工具调用
+  logger.info(`🤖 Calling LLM for agent ${agentName} with tool support`);
+  
+  let currentInput = input;
+  let conversationHistory: string[] = [];
+  const maxToolCalls = 3; // 最多尝试 3 次工具调用
+
+  // 先尝试工具调用
+  for (let i = 0; i < maxToolCalls; i++) {
+    const response = await Promise.race([
+      executeAgentNodeWithTools(agent, currentInput, conversationHistory),
+      new Promise<string>((_, reject) =>
+        setTimeout(() => reject(new Error(`Agent 执行超时（${AGENT_EXECUTION_TIMEOUT / 1000}s）`)), AGENT_EXECUTION_TIMEOUT)
+      )
+    ]);
+
+    const toolCall = extractToolCallFromResponse(response);
+    if (!toolCall.hasToolCall || !toolCall.toolId) {
+      // 没有工具调用，直接返回响应
+      return response;
+    }
+
+    // 有工具调用，执行工具
+    conversationHistory.push(`用户: ${currentInput}`);
+    conversationHistory.push(`助手: ${response}`);
+
+    logger.info(`🔧 检测到工具调用: ${toolCall.toolId}`, toolCall.args);
+    const toolResult = await executeToolCall(toolCall.toolId, toolCall.args || {});
+
+    if (toolResult.success) {
+      conversationHistory.push(`工具结果: ${toolResult.result}`);
+      currentInput = `工具执行成功，结果如下，请基于结果继续处理：\n\n${toolResult.result}`;
+    } else {
+      conversationHistory.push(`工具结果: 执行失败 - ${toolResult.error}`);
+      currentInput = `工具执行失败，错误信息如下，请基于错误信息继续处理：\n\n${toolResult.error}`;
+    }
+
+    logger.info(`🔧 工具调用结果 (第 ${i + 1} 轮):`, currentInput);
+  }
+
+  // 工具调用次数用完，直接返回最后一次的响应或兜底
+  logger.warn('⚠️ 工具调用次数用完，直接返回');
+  return `多次尝试后未能完成任务，请重试或使用其他方式。`;
+}
+
+/**
+ * 执行 Agent Node（支持工具调用的版本）
+ */
+async function executeAgentNodeWithTools(
+  agent: AgentRow | undefined,
+  input: string,
+  conversationHistory: string[]
+): Promise<string> {
+  if (!agent?.system_prompt) {
+    return `Agent 配置缺失，请检查 Agent 配置。`;
+  }
+
+  // 构建系统提示，加入工具信息
+  const systemPromptWithTools = buildSystemPromptWithTools(agent.system_prompt);
+
+  // 构建完整的提示
+  let fullPrompt = systemPromptWithTools;
+  if (conversationHistory.length > 0) {
+    fullPrompt += '\n\n【历史对话】\n' + conversationHistory.join('\n');
+  }
+  fullPrompt += `\n\n【当前请求】\n${input}`;
+
+  // 调用 LLM
+  // 注意：这里我们暂时绕过标准的 executeAgentWithLLM，直接调用（因为标准函数可能用的是数据库中的原始 system prompt）
+  // 实际项目中你可能需要修改 llmService 来支持自定义 system prompt
+  logger.info(`🤖 Calling LLM with tool-enabled prompt (${agent.name})`);
+  
+  // 暂时的简单实现：复用 executeAgentWithLLM，传入增强的输入
+  return await executeAgentWithLLM(agent.id, fullPrompt);
 }
 
 /**

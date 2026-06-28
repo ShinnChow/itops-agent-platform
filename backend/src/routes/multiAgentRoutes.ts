@@ -1,428 +1,265 @@
 import { Router, Request, Response } from 'express';
 import { randomUUID } from 'crypto';
-import { MultiAgentOrchestrator } from '../services/multiAgentCollaboration';
-import EnhancedRAGService from '../services/enhancedRAGService';
-import db, { getIOInstance } from '../models/database';
-import { emitToTask } from '../websocket/handler';
+import db from '../models/database';
 import { logger } from '../utils/logger';
+import {
+  initializeMultiAgentSystem,
+  executeTask,
+  getCoordinator,
+  specialistRegistry,
+} from '../services/multiAgent';
 
 const router = Router();
-const ragService = new EnhancedRAGService();
 
-// 预设协作模板
-const PRESET_COLLABORATION_TEMPLATES = [
-  {
-    id: 'troubleshooting',
-    name: '故障诊断协作',
-    description: '多个专家Agent协作进行复杂故障定位',
-    agentRoles: ['告警处理', '故障诊断', '日志分析', '系统巡检'],
-    workflow: '告警分析 → 故障定位 → 日志排查 → 健康检查',
-    category: '故障处理'
-  },
-  {
-    id: 'system_check',
-    name: '系统健康检查',
-    description: '全面检查系统健康状态和安全合规',
-    agentRoles: ['系统巡检', '合规检查', '服务器命令执行'],
-    workflow: '硬件检查 → 服务状态 → 安全审计 → 综合报告',
-    category: '巡检审计'
-  },
-  {
-    id: 'incident_response',
-    name: '事件响应流程',
-    description: '标准化的IT事件响应处理流程',
-    agentRoles: ['告警处理', '故障诊断', '变更执行', '文档生成'],
-    workflow: '接收告警 → 分析影响 → 执行修复 → 记录归档',
-    category: '事件响应'
-  },
-  {
-    id: 'knowledge_enhanced',
-    name: '知识增强分析',
-    description: '结合知识库进行深度问题分析',
-    agentRoles: ['知识检索', '任意业务Agent'],
-    workflow: '知识检索 → 上下文注入 → 智能分析 → 方案生成',
-    category: '知识管理'
+// 初始化系统（懒加载）
+let systemInitialized = false;
+
+function ensureSystemInitialized() {
+  if (!systemInitialized) {
+    initializeMultiAgentSystem();
+    systemInitialized = true;
   }
-];
+}
+
+// ==================== 任务执行 API ====================
 
 /**
- * 启动多Agent协作
+ * POST /api/multi-agent/task
+ * 执行运维任务（使用双层 Agent 架构）
  */
-router.post('/collaborate', async (req: Request, res: Response) => {
+router.post('/task', async (req: Request, res: Response) => {
   try {
-    const {
-      query,
-      agentIds,
-      options = {}
-    } = req.body;
+    const { input, userId, context } = req.body;
 
-    if (!query || !agentIds || agentIds.length === 0) {
+    if (!input) {
       return res.status(400).json({
         success: false,
-        error: 'query和agentIds参数必填'
+        error: 'Task input is required',
       });
     }
 
-    const taskId = randomUUID();
-    const orchestrator = new MultiAgentOrchestrator(taskId, options);
+    ensureSystemInitialized();
 
-    // 开始协作（异步）
-    res.json({
-      success: true,
-      data: {
-        taskId,
-        status: 'started',
-        message: '多Agent协作已开始'
-      }
-    });
+    const taskStartTime = Date.now();
+    const result = await executeTask(input, userId);
 
-    // 后台执行协作
+    // 保存执行记录
+    const executionId = randomUUID();
     try {
-      const result = await orchestrator.collaborate(query, agentIds, options);
-      
-      // 保存协作结果到任务记录
       db.prepare(`
-        INSERT INTO tasks (id, name, status, node_results, created_at)
-        VALUES (?, ?, ?, ?, datetime('now','localtime'))
+        INSERT INTO agent_executions (id, agent_id, agent_name, input_text, output_text, status, error_message, execution_time_ms, metadata, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now','localtime'))
       `).run(
-        taskId,
-        `多Agent协作: ${query.substring(0, 50)}...`,
-        'completed',
-        JSON.stringify({ conversation: result })
+        executionId,
+        result.agentId,
+        result.agentName,
+        input,
+        result.result?.output || '',
+        result.status,
+        result.result?.error || null,
+        Date.now() - taskStartTime,
+        JSON.stringify({
+          multiAgent: true,
+          context: context || null,
+          delegatedTo: result.delegatedTo || null,
+        })
       );
-
-      const io = getIOInstance();
-      emitToTask(io!, taskId, 'task:completed', {
-        status: 'completed',
-        result: result,
-        timestamp: new Date().toISOString()
-      });
-
-      // 可选：保存到知识库
-      if (options.saveToKnowledge) {
-        await orchestrator.saveToKnowledgeBase(
-          `协作案例: ${query.substring(0, 30)}...`,
-          '协作案例'
-        );
-      }
-
-    } catch (executionError) {
-      logger.error('协作执行失败:', executionError);
-      const io = getIOInstance();
-      emitToTask(io!, taskId, 'task:error', {
-        status: 'failed',
-        error: executionError instanceof Error ? executionError.message : String(executionError),
-        timestamp: new Date().toISOString()
-      });
+    } catch (dbErr) {
+      logger.error('保存执行记录失败', dbErr);
     }
 
-  } catch (error) {
-    logger.error('启动协作失败:', error);
-    res.status(500).json({
-      success: false,
-      error: '启动协作失败'
-    });
-  }
-});
-
-/**
- * 获取协作模板
- */
-router.get('/templates', (_req: Request, res: Response) => {
-  try {
     res.json({
       success: true,
-      data: PRESET_COLLABORATION_TEMPLATES
+      data: result,
     });
-  } catch {
+  } catch (error) {
+    logger.error('双层 Agent 任务执行失败', error);
     res.status(500).json({
       success: false,
-      error: '获取模板失败'
+      error: error instanceof Error ? error.message : 'Task execution failed',
+    });
+  }
+});
+
+// ==================== Specialist 管理 API ====================
+
+/**
+ * GET /api/multi-agent/specialists
+ * 获取所有 Specialist
+ */
+router.get('/specialists', (req: Request, res: Response) => {
+  try {
+    ensureSystemInitialized();
+
+    const { domain, enabled } = req.query;
+    let specialists;
+
+    if (domain) {
+      specialists = specialistRegistry.getByDomain(domain as any);
+    } else {
+      specialists = specialistRegistry.getAll();
+    }
+
+    if (enabled !== undefined) {
+      specialists = specialists.filter(s => s.enabled === (enabled === 'true'));
+    }
+
+    const data = specialists.map(s => ({
+      id: s.id,
+      name: s.name,
+      domain: s.domain,
+      capabilities: s.capabilities,
+      temperature: s.temperature,
+      enabled: s.enabled,
+    }));
+
+    res.json({
+      success: true,
+      data,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: 'Failed to get specialists',
     });
   }
 });
 
 /**
- * 根据模板快速创建协作
+ * GET /api/multi-agent/specialists/select
+ * 为任务选择最合适的 Specialist
  */
-router.post('/collaborate/from-template', async (req: Request, res: Response) => {
+router.get('/specialists/select', (req: Request, res: Response) => {
   try {
-    const { templateId, query, extraAgentIds = [] } = req.body;
-    
-    const template = PRESET_COLLABORATION_TEMPLATES.find(t => t.id === templateId);
-    if (!template) {
-      return res.status(404).json({
-        success: false,
-        error: '模板不存在'
-      });
-    }
-
-    // 查找匹配的Agent
-    const matchingAgents = db.prepare(`
-      SELECT id, name, role FROM agents 
-      WHERE enabled = 1 AND (
-        ${template.agentRoles.map(() => 'category = ? OR role LIKE ?').join(' OR ')}
-      )
-    `).all(
-      ...template.agentRoles.flatMap(role => [role, `%${role}%`])
-    ) as Array<Record<string, unknown>>;
-
-    const agentIds = [
-      ...matchingAgents.map(a => a.id),
-      ...extraAgentIds
-    ].filter((id, index, arr) => arr.indexOf(id) === index); // 去重
-
-    if (agentIds.length === 0) {
+    const { input } = req.query;
+    if (!input) {
       return res.status(400).json({
         success: false,
-        error: '没有找到匹配的Agent，请先配置Agent'
+        error: 'Input is required',
       });
     }
 
-    // 调用协作API
-    const taskId = randomUUID();
-    const orchestrator = new MultiAgentOrchestrator(taskId);
+    ensureSystemInitialized();
+    const specialist = specialistRegistry.selectBestSpecialistForTask(input as string);
+
+    if (!specialist) {
+      return res.json({
+        success: true,
+        data: null,
+        message: 'No suitable specialist found',
+      });
+    }
 
     res.json({
       success: true,
       data: {
-        taskId,
-        templateId,
-        agentIds,
-        matchingAgents,
-        status: 'started'
-      }
-    });
-
-    // 后台执行
-    try {
-      await orchestrator.collaborate(query, agentIds);
-      const io = getIOInstance();
-      emitToTask(io!, taskId, 'task:completed', {
-        status: 'completed',
-        templateId,
-        timestamp: new Date().toISOString()
-      });
-    } catch (error) {
-      logger.error('模板协作执行失败:', error);
-      const io = getIOInstance();
-      emitToTask(io!, taskId, 'task:error', {
-        status: 'failed',
-        error: error instanceof Error ? error.message : String(error),
-        templateId,
-        timestamp: new Date().toISOString()
-      });
-    }
-
-  } catch {
-    res.status(500).json({
-      success: false,
-      error: '创建协作失败'
-    });
-  }
-});
-
-// ========== 增强的RAG知识库API ==========
-
-/**
- * 智能搜索知识库
- */
-router.get('/knowledge/search', async (req: Request, res: Response) => {
-  try {
-    const { q, category, limit = 10, minScore = 0.1 } = req.query;
-
-    if (!q) {
-      return res.status(400).json({
-        success: false,
-        error: '搜索关键词必填'
-      });
-    }
-
-    const results = await ragService.search(q as string, {
-      category: category as string,
-      limit: parseInt(limit as string),
-      minScore: parseFloat(minScore as string)
-    });
-
-    res.json({
-      success: true,
-      data: {
-        query: q,
-        results,
-        total: results.length
-      }
+        id: specialist.id,
+        name: specialist.name,
+        domain: specialist.domain,
+        capabilities: specialist.capabilities,
+      },
     });
   } catch (error) {
-    logger.error('搜索失败:', error);
     res.status(500).json({
       success: false,
-      error: '搜索失败'
+      error: 'Failed to select specialist',
     });
   }
 });
 
 /**
- * 获取知识注入提示词（用于增强Agent）
+ * POST /api/multi-agent/specialists/:id/execute
+ * 直接执行某个 Specialist
  */
-router.post('/knowledge/inject', async (req: Request, res: Response) => {
-  try {
-    const { query, category, maxItems, minScore } = req.body;
-
-    if (!query) {
-      return res.status(400).json({
-        success: false,
-        error: '查询内容必填'
-      });
-    }
-
-    const result = await ragService.injectKnowledge(query, {
-      category,
-      maxItems,
-      minScore
-    });
-
-    res.json({
-      success: true,
-      data: result
-    });
-  } catch (error) {
-    logger.error('知识注入失败:', error);
-    res.status(500).json({
-      success: false,
-      error: '知识注入失败'
-    });
-  }
-});
-
-/**
- * 添加知识
- */
-router.post('/knowledge', async (req: Request, res: Response) => {
-  try {
-    const { title, content, category, tags } = req.body;
-
-    if (!title || !content) {
-      return res.status(400).json({
-        success: false,
-        error: '标题和内容必填'
-      });
-    }
-
-    const id = await ragService.addKnowledge(title, content, category, tags);
-
-    res.status(201).json({
-      success: true,
-      data: { id, title, category }
-    });
-  } catch (error) {
-    logger.error('添加知识失败:', error);
-    res.status(500).json({
-      success: false,
-      error: '添加知识失败'
-    });
-  }
-});
-
-/**
- * 批量导入知识
- */
-router.post('/knowledge/batch', async (req: Request, res: Response) => {
-  try {
-    const { items } = req.body;
-
-    if (!items || !Array.isArray(items)) {
-      return res.status(400).json({
-        success: false,
-        error: 'items参数必须是数组'
-      });
-    }
-
-    const result = await ragService.batchImport(items);
-
-    res.json({
-      success: true,
-      data: result
-    });
-  } catch (error) {
-    logger.error('批量导入失败:', error);
-    res.status(500).json({
-      success: false,
-      error: '批量导入失败'
-    });
-  }
-});
-
-/**
- * 获取相似知识
- */
-router.get('/knowledge/:id/similar', async (req: Request, res: Response) => {
+router.post('/specialists/:id/execute', async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const { limit = 5 } = req.query;
+    const { input, context } = req.body;
 
-    const similarItems = await ragService.getSimilarKnowledge(
-      id,
-      parseInt(limit as string)
-    );
+    if (!input) {
+      return res.status(400).json({
+        success: false,
+        error: 'Input is required',
+      });
+    }
+
+    ensureSystemInitialized();
+    const specialist = specialistRegistry.getById(id);
+
+    if (!specialist) {
+      return res.status(404).json({
+        success: false,
+        error: 'Specialist not found',
+      });
+    }
+
+    if (!specialist.enabled) {
+      return res.status(400).json({
+        success: false,
+        error: 'Specialist is disabled',
+      });
+    }
+
+    const taskContext = {
+      taskId: randomUUID(),
+      input,
+      timestamp: Date.now(),
+      metadata: context,
+    };
+
+    const startTime = Date.now();
+    const result = await specialist.execute(taskContext);
 
     res.json({
       success: true,
       data: {
-        sourceId: id,
-        similarItems
-      }
+        specialistId: specialist.id,
+        specialistName: specialist.name,
+        result,
+        executionTime: Date.now() - startTime,
+      },
     });
   } catch (error) {
-    logger.error('获取相似知识失败:', error);
     res.status(500).json({
       success: false,
-      error: '获取相似知识失败'
+      error: 'Failed to execute specialist',
     });
   }
 });
 
+// ==================== 系统信息 API ====================
+
 /**
- * 获取知识库统计
+ * GET /api/multi-agent/status
+ * 获取系统状态
  */
-router.get('/knowledge/statistics', (_req: Request, res: Response) => {
+router.get('/status', (req: Request, res: Response) => {
   try {
-    const statistics = ragService.getStatistics();
+    ensureSystemInitialized();
+
+    const coordinator = getCoordinator();
+    const allSpecialists = specialistRegistry.getAll();
+    const enabledSpecialists = specialistRegistry.getEnabled();
+
     res.json({
       success: true,
-      data: statistics
+      data: {
+        initialized: true,
+        coordinator: {
+          id: coordinator.id,
+          name: coordinator.name,
+        },
+        specialists: {
+          total: allSpecialists.length,
+          enabled: enabledSpecialists.length,
+          domains: [...new Set(allSpecialists.map(s => s.domain))],
+        },
+      },
     });
   } catch (error) {
-    logger.error('获取统计失败:', error);
     res.status(500).json({
       success: false,
-      error: '获取统计失败'
-    });
-  }
-});
-
-/**
- * 获取Agent协作历史记录
- */
-router.get('/history', (req: Request, res: Response) => {
-  try {
-    const { limit = 20, offset = 0 } = req.query;
-    
-    const history = db.prepare(`
-      SELECT id, name, status, created_at 
-      FROM tasks 
-      WHERE name LIKE '%多Agent协作%' 
-      ORDER BY created_at DESC 
-      LIMIT ? OFFSET ?
-    `).all(parseInt(limit as string), parseInt(offset as string));
-
-    res.json({
-      success: true,
-      data: history
-    });
-  } catch {
-    res.status(500).json({
-      success: false,
-      error: '获取历史记录失败'
+      error: 'Failed to get system status',
     });
   }
 });

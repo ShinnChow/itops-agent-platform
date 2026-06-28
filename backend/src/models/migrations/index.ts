@@ -33,6 +33,12 @@ import v027DcInfrastructure from './v027_dc_infrastructure';
 import v028DcLifecycle from './v028_dc_lifecycle';
 import v029DcRoomMonitor from './v029_dc_room_monitor';
 import v030NetworkSubnets from './v030_network_subnets';
+import { up as v031Up, down as v031Down } from './v031_device_manufacturers';
+import { up as v032Up, down as v032Down } from './v032_device_types';
+import { up as v033Up, down as v033Down } from './v033_device_type_slot_definitions';
+import { up as v034Up, down as v034Down } from './v034_dc_power_panels';
+import { up as v035Up, down as v035Down } from './v035_dc_power_feeds';
+import { up as v036Up, down as v036Down } from './v036_dc_cables';
 
 // Helper: wrap sync up/down into async
 function wrapAsync(fn: (db: any) => void): (db: any) => Promise<void> {
@@ -213,6 +219,63 @@ const v030NetworkSubnetsMigration: Migration = {
   down: wrapAsync(v030NetworkSubnets.down),
 };
 
+//
+// v031–v036: NetBox 借鉴的核心 DCIM 增强
+//
+const v031DeviceManufacturers: Migration = {
+  id: '20250101000041',
+  version: 41,
+  name: 'device_manufacturers',
+  description: 'Device manufacturers table (from NetBox dcim.Manufacturer)',
+  up: wrapAsync(v031Up),
+  down: wrapAsync(v031Down),
+};
+
+const v032DeviceTypes: Migration = {
+  id: '20250101000042',
+  version: 42,
+  name: 'device_types',
+  description: 'Device type templates table (from NetBox dcim.DeviceType)',
+  up: wrapAsync(v032Up),
+  down: wrapAsync(v032Down),
+};
+
+const v033DeviceTypeSlotDefinitions: Migration = {
+  id: '20250101000043',
+  version: 43,
+  name: 'device_type_slot_definitions',
+  description: 'Device type slot/port templates (from NetBox dcim.ComponentTemplate)',
+  up: wrapAsync(v033Up),
+  down: wrapAsync(v033Down),
+};
+
+const v034DcPowerPanels: Migration = {
+  id: '20250101000044',
+  version: 44,
+  name: 'dc_power_panels',
+  description: 'Power distribution panels for DC (from NetBox dcim.PowerPanel)',
+  up: wrapAsync(v034Up),
+  down: wrapAsync(v034Down),
+};
+
+const v035DcPowerFeeds: Migration = {
+  id: '20250101000045',
+  version: 45,
+  name: 'dc_power_feeds',
+  description: 'Power feeds from panels to racks (from NetBox dcim.PowerFeed)',
+  up: wrapAsync(v035Up),
+  down: wrapAsync(v035Down),
+};
+
+const v036DcCables: Migration = {
+  id: '20250101000046',
+  version: 46,
+  name: 'dc_cables',
+  description: 'Simplified cable connections for topology visualization (from NetBox dcim.Cable)',
+  up: wrapAsync(v036Up),
+  down: wrapAsync(v036Down),
+};
+
 export const ALL_MIGRATIONS: Migration[] = [
   v001InitialSchema,
   v002AddApiProvider,
@@ -242,6 +305,13 @@ export const ALL_MIGRATIONS: Migration[] = [
   v028DcLifecycleMigration,
   v029DcRoomMonitorMigration,
   v030NetworkSubnetsMigration,
+  // v031–v036: NetBox 借鉴的 DCIM 增强 (version 41-46)
+  v031DeviceManufacturers,
+  v032DeviceTypes,
+  v033DeviceTypeSlotDefinitions,
+  v034DcPowerPanels,
+  v035DcPowerFeeds,
+  v036DcCables,
   // 重新编号的迁移（版本号冲突已解决）
   v031CredentialsTable,
   v032ToolLinks,

@@ -74,6 +74,9 @@ const ImageRegistry = lazy(() => import('./pages/ImageRegistry'));
 const Kubernetes = lazy(() => import('./pages/Kubernetes'));
 const CostAnalysis = lazy(() => import('./pages/CostAnalysis'));
 const AutoScale = lazy(() => import('./pages/AutoScale'));
+const Tools = lazy(() => import('./pages/Tools'));
+const WorkflowProviders = lazy(() => import('./pages/WorkflowProviders'));
+const AlertProviders = lazy(() => import('./pages/AlertProviders'));
 
 // ==================== 加载占位 ====================
 function PageLoader() {
@@ -137,10 +140,13 @@ function App() {
                     <Route path="db-connections" element={<SuspenseRoute><ProtectedRoute><DbConnections /></ProtectedRoute></SuspenseRoute>} />
                     <Route path="network-devices" element={<SuspenseRoute><ProtectedRoute><NetworkDevices /></ProtectedRoute></SuspenseRoute>} />
                     <Route path="agents" element={<SuspenseRoute><ProtectedRoute><Agents /></ProtectedRoute></SuspenseRoute>} />
+                    <Route path="agents/tools" element={<SuspenseRoute><ProtectedRoute><Tools /></ProtectedRoute></SuspenseRoute>} />
                     <Route path="workflows" element={<SuspenseRoute><ProtectedRoute><Workflows /></ProtectedRoute></SuspenseRoute>} />
+                    <Route path="workflows/providers" element={<SuspenseRoute><ProtectedRoute><WorkflowProviders /></ProtectedRoute></SuspenseRoute>} />
                     <Route path="workflows/:id" element={<SuspenseRoute><ProtectedRoute><WorkflowEditor /></ProtectedRoute></SuspenseRoute>} />
                     <Route path="tasks" element={<SuspenseRoute><ProtectedRoute><Tasks /></ProtectedRoute></SuspenseRoute>} />
                     <Route path="alerts" element={<SuspenseRoute><ProtectedRoute><Alerts /></ProtectedRoute></SuspenseRoute>} />
+                    <Route path="alerts/providers" element={<SuspenseRoute><ProtectedRoute><AlertProviders /></ProtectedRoute></SuspenseRoute>} />
                     <Route path="alert-mappings" element={<SuspenseRoute><ProtectedRoute><AlertMappings /></ProtectedRoute></SuspenseRoute>} />
                     <Route path="knowledge" element={<SuspenseRoute><ProtectedRoute><Knowledge /></ProtectedRoute></SuspenseRoute>} />
                     <Route path="scripts" element={<SuspenseRoute><ProtectedRoute><Scripts /></ProtectedRoute></SuspenseRoute>} />

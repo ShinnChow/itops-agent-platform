@@ -4,6 +4,7 @@ import db from '../models/database';
 import { executeAgentWithLLM } from '../services/llmService';
 import { executeAgentNode } from '../services/agentExecutor';
 import { requireRole } from '../middleware/auth';
+import { agentToolRegistry } from '../services/agentToolRegistry';
 
 const router = Router();
 
@@ -402,7 +403,83 @@ router.get('/export/:id', (req: Request, res: Response) => {
   }
 });
 
-// 注意：测试未保存�?Agent 配置需要先保存 Agent
+// ==================== 工具管理 API ====================
+
+// 获取所有工具
+router.get('/tools/list', (req: Request, res: Response) => {
+  try {
+    const { category } = req.query;
+    let tools;
+    
+    if (category) {
+      tools = agentToolRegistry.listToolsByCategory(category as any);
+    } else {
+      tools = agentToolRegistry.listTools();
+    }
+    
+    // 简化工具信息，避免暴露内部实现
+    const simplifiedTools = tools.map(tool => ({
+      id: tool.id,
+      name: tool.name,
+      description: tool.description,
+      category: tool.category,
+      schema: tool.schema,
+    }));
+    
+    res.json({
+      success: true,
+      data: simplifiedTools,
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, error: 'Failed to get tools' });
+  }
+});
+
+// 测试工具执行
+router.post('/tools/test', async (req: Request, res: Response) => {
+  try {
+    const { toolId, args } = req.body;
+    
+    if (!toolId) {
+      return res.status(400).json({ success: false, error: 'Tool ID is required' });
+    }
+    
+    const tool = agentToolRegistry.getTool(toolId);
+    if (!tool) {
+      return res.status(404).json({ success: false, error: `Tool ${toolId} not found` });
+    }
+    
+    const result = await tool.execute(args || {});
+    
+    res.json({
+      success: true,
+      data: {
+        toolId,
+        args,
+        result,
+      },
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, error: 'Failed to execute tool' });
+  }
+});
+
+// 获取工具的描述（给 LLM 用的格式）
+router.get('/tools/descriptions', (req: Request, res: Response) => {
+  try {
+    const descriptions = agentToolRegistry.generateToolDescriptions();
+    res.json({
+      success: true,
+      data: {
+        description: descriptions,
+      },
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, error: 'Failed to get tool descriptions' });
+  }
+});
+
+// 注意：测试未保存 Agent 配置需要先保存 Agent
 // 推荐流程：先创建 Agent，再测试执行
 
 export default router;

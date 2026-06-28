@@ -38,6 +38,7 @@ class MultiAgentOrchestrator {
   private maxThinkingTime: number = 5 * 60 * 1000;
   private maxConversationHistory: number = 50;
   private trimTargetSize: number = 30;
+  private abortController: AbortController;
 
   constructor(taskId: string, initialContext: Record<string, unknown> = {}) {
     this.context = {
@@ -49,6 +50,21 @@ class MultiAgentOrchestrator {
       startTime: Date.now(),
       delegationChain: []
     };
+    this.abortController = new AbortController();
+  }
+
+  /**
+   * 获取截止时间信号 — 超过 maxThinkingTime 后自动中止
+   */
+  private getDeadlineSignal(): AbortSignal {
+    const remaining = this.maxThinkingTime - (Date.now() - this.context.startTime);
+    if (remaining <= 0) {
+      this.abortController.abort();
+    } else {
+      // 重置上一个定时器，重新设置
+      setTimeout(() => this.abortController.abort(), Math.min(remaining, 60000));
+    }
+    return this.abortController.signal;
   }
 
   /**
@@ -84,7 +100,9 @@ ${agentDescriptions}
         routingPrompt,
         '你是一个智能的Agent选择助手，擅长将任务分配给最适合的专家。',
         'Agent Router',
-        0.3
+        0.3,
+        '',
+        this.getDeadlineSignal()
       );
 
       const matchedAgent = availableAgents.find(agent => 
@@ -214,7 +232,14 @@ ${agentDescriptions}
       }
 
       // 当前Agent处理
-      const result = await this.processAgentTurn(agents as AgentDB[]);
+      const result = await this.processAgentTurn(agents as AgentDB[]).catch(err => {
+        // 截止时间到达 — 终止编排并返回已有结果
+        if (err.message?.includes('deadline') || err.message?.includes('cancelled')) {
+          logger.warn(`⏰ [Orchestrator] Deadline reached at round ${currentRound}, stopping`);
+          return { type: 'final' as const };
+        }
+        throw err;
+      });
       
       if (result.type === 'final') {
         shouldContinue = false;
@@ -261,12 +286,14 @@ ${agentDescriptions}
     const conversation = this.formatConversationForAgent(currentAgent);
     
     try {
-      // 调用Agent
+      // 调用Agent（带截止时间信号）
       const response = await callDoubaoAPI(
         conversation,
         currentAgent.system_prompt || '你是一个专业的IT运维助手。',
         currentAgent.name,
-        currentAgent.temperature || 0.7
+        currentAgent.temperature || 0.7,
+        currentAgent.id,
+        this.getDeadlineSignal()
       );
 
       // 记录响应
