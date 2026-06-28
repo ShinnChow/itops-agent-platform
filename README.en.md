@@ -1,4 +1,4 @@
-[English](README.en.md) | [中文](README.md) | [한국어](README.ko.md) | [日本語](README.ja.md) | [Deutsch](README.de.md) | [Français](README.fr.md)
+[English](README.en.md) | [中文](README.md) | [繁體中文](README.zh-TW.md) | [한국어](README.ko.md) | [日本語](README.ja.md) | [Deutsch](README.de.md) | [Français](README.fr.md)
 
 ***
 
@@ -45,7 +45,7 @@ Effective May 27, 2026, all new code contributions to this project are licensed 
   </a>
 </p>
 
-🎮 [Live Demo](https://agentdemo-0mwug01t6.maozi.io/) &emsp;|&emsp; 📝[Vision & Community](项目愿景与社区共建.md) &emsp;|&emsp; 📝[AI Coding Skill](SKILL.md) &emsp;|&emsp; 📝[Documentation Book](https://aiopsdoc-0mwug01t6.maozi.io/book/) &emsp;|&emsp; 📖[Project Docs](https://aiopsdoc-0mwug01t6.maozi.io/) &emsp;|&emsp; ✍️[Author's Note](https://mp.weixin.qq.com/s/NDqYrfqR0RZEvSESyVD2hg)
+🎮 [Live Demo](https://agentdemo-0mwug01t6.maozi.io/) &emsp;|&emsp; 📝[Vision & Community](项目愿景与社区共建.md) &emsp;|&emsp; 📝[Documentation Book](https://aiopsdoc-0mwug01t6.maozi.io/book/) &emsp;|&emsp; 📖[Project Docs](https://aiopsdoc-0mwug01t6.maozi.io/) &emsp;|&emsp; ✍️[Author's Note](https://mp.weixin.qq.com/s/NDqYrfqR0RZEvSESyVD2hg)
 
 🌐 Official Website: <https://www.zjzwfw.cloud/ITOpsAgentinfo>
 

@@ -1,4 +1,4 @@
-[English](README.en.md) | [中文](README.md) | [한국어](README.ko.md) | [日本語](README.ja.md) | [Deutsch](README.de.md) | [Français](README.fr.md)
+[English](README.en.md) | [中文](README.md) | [繁體中文](README.zh-TW.md) | [한국어](README.ko.md) | [日本語](README.ja.md) | [Deutsch](README.de.md) | [Français](README.fr.md)
 
 ***
 
@@ -45,7 +45,7 @@ Ab dem 27. Mai 2026 werden alle neu eingereichten Code-Beiträge dieses Projekts
   </a>
 </p>
 
-🎮 [Live-Demo](https://agentdemo-0mwug01t6.maozi.io/) &emsp;|&emsp; 📝[Vision & Gemeinschaft](项目愿景与社区共建.md) &emsp;|&emsp; 📝[KI-Programmier-Skill](SKILL.md) &emsp;|&emsp; 📝[Lehrbuch](https://aiopsdoc-0mwug01t6.maozi.io/book/) &emsp;|&emsp; 📖[Projektdokumentation](https://aiopsdoc-0mwug01t6.maozi.io/) &emsp;|&emsp; ✍️[Wort des Autors](https://mp.weixin.qq.com/s/NDqYrfqR0RZEvSESyVD2hg)
+🎮 [Live-Demo](https://agentdemo-0mwug01t6.maozi.io/) &emsp;|&emsp; 📝[Vision & Gemeinschaft](项目愿景与社区共建.md) &emsp;|&emsp; 📝[Lehrbuch](https://aiopsdoc-0mwug01t6.maozi.io/book/) &emsp;|&emsp; 📖[Projektdokumentation](https://aiopsdoc-0mwug01t6.maozi.io/) &emsp;|&emsp; ✍️[Wort des Autors](https://mp.weixin.qq.com/s/NDqYrfqR0RZEvSESyVD2hg)
 
 🌐 Offizielle Website: <https://www.zjzwfw.cloud/ITOpsAgentinfo>
 

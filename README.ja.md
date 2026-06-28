@@ -1,4 +1,4 @@
-[English](README.en.md) | [中文](README.md) | [한국어](README.ko.md) | [日本語](README.ja.md) | [Deutsch](README.de.md) | [Français](README.fr.md)
+[English](README.en.md) | [中文](README.md) | [繁體中文](README.zh-TW.md) | [한국어](README.ko.md) | [日本語](README.ja.md) | [Deutsch](README.de.md) | [Français](README.fr.md)
 
 ***
 
@@ -45,7 +45,7 @@
   </a>
 </p>
 
-🎮 [オンラインデモ](https://agentdemo-0mwug01t6.maozi.io/) &emsp;|&emsp; 📝[ビジョンとコミュニティ貢献](项目愿景与社区共建.md) &emsp;|&emsp; 📝[AIプログラミングスキル](SKILL.md) &emsp;|&emsp; 📝[教育書籍](https://aiopsdoc-0mwug01t6.maozi.io/book/) &emsp;|&emsp; 📖[プロジェクトドキュメント](https://aiopsdoc-0mwug01t6.maozi.io/) &emsp;|&emsp; ✍️[著者の言葉](https://mp.weixin.qq.com/s/NDqYrfqR0RZEvSESyVD2hg)
+🎮 [オンラインデモ](https://agentdemo-0mwug01t6.maozi.io/) &emsp;|&emsp; 📝[ビジョンとコミュニティ貢献](项目愿景与社区共建.md) &emsp;|&emsp; 📝[教育書籍](https://aiopsdoc-0mwug01t6.maozi.io/book/) &emsp;|&emsp; 📖[プロジェクトドキュメント](https://aiopsdoc-0mwug01t6.maozi.io/) &emsp;|&emsp; ✍️[著者の言葉](https://mp.weixin.qq.com/s/NDqYrfqR0RZEvSESyVD2hg)
 
 🌐 公式ウェブサイト: <https://www.zjzwfw.cloud/ITOpsAgentinfo>
 
